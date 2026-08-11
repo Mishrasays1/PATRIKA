@@ -8,13 +8,22 @@ export const ProfileModal = ({ isOpen, onClose }) => {
 
   if (!isOpen || !currentUser) return null;
 
-  const [name, setName] = useState(currentUser.name || '');
+  const [name, setName] = useState(currentUser?.name || '');
   const [username, setUsername] = useState(
-    currentUser.username || currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_')
+    currentUser?.username || (currentUser?.email ? currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_') : 'user')
   );
-  const [bio, setBio] = useState(currentUser.bio || 'Verified Citizen Journalist Profile');
+  const [bio, setBio] = useState(currentUser?.bio || 'Verified Citizen Journalist Profile');
   const [existingUsers, setExistingUsers] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  // Sync state when currentUser or isOpen changes
+  useEffect(() => {
+    if (currentUser) {
+      setName(currentUser.name || '');
+      setUsername(currentUser.username || (currentUser.email ? currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_') : 'user'));
+      setBio(currentUser.bio || 'Verified Citizen Journalist Profile');
+    }
+  }, [currentUser, isOpen]);
 
   // Fetch registered users to validate username uniqueness live
   useEffect(() => {
@@ -29,16 +38,16 @@ export const ProfileModal = ({ isOpen, onClose }) => {
     if (isOpen) fetchUsers();
   }, [isOpen]);
 
-  const cleanHandle = username.toLowerCase().trim().replace(/^@/, '');
+  const cleanHandle = (username || '').toLowerCase().trim().replace(/^@/, '');
 
   // Check if username is taken by ANOTHER distinct user
-  const isUsernameTaken = existingUsers.some(
-    u => String(u._id) !== String(currentUser._id) && u.username && u.username.toLowerCase() === cleanHandle
+  const isUsernameTaken = Array.isArray(existingUsers) && existingUsers.some(
+    u => u && String(u._id) !== String(currentUser?._id) && u.username && String(u.username).toLowerCase() === cleanHandle
   );
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!username.trim()) {
+    if (!cleanHandle) {
       showToast('Username cannot be empty.', 'error');
       return;
     }
@@ -53,7 +62,7 @@ export const ProfileModal = ({ isOpen, onClose }) => {
       
       const updatedLocalUser = {
         ...currentUser,
-        name: name || currentUser.name,
+        name: name || currentUser.name || 'Citizen Reporter',
         username: cleanHandle,
         bio: bio || currentUser.bio
       };
@@ -73,15 +82,17 @@ export const ProfileModal = ({ isOpen, onClose }) => {
       onClose();
 
       // 3. Sync background request to server/Atlas API
-      api.updateProfile(currentUser._id, {
-        name,
-        username: cleanHandle,
-        bio
-      }).then(res => {
-        if (res && res._id) setCurrentUser(res);
-      }).catch(err => {
-        console.log('Background profile sync:', err);
-      });
+      if (currentUser._id) {
+        api.updateProfile(currentUser._id, {
+          name: name || currentUser.name,
+          username: cleanHandle,
+          bio
+        }).then(res => {
+          if (res && res._id) setCurrentUser(res);
+        }).catch(err => {
+          console.log('Background profile sync:', err);
+        });
+      }
 
     } catch (err) {
       showToast('Profile updated!', 'success');
@@ -99,12 +110,12 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <img 
-              src={currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.email)}`} 
+              src={currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.email || 'user')}`} 
               alt="Avatar" 
               className="w-12 h-12 rounded-full object-cover ring-4 ring-emerald-500/30"
             />
             <div>
-              <h2 className="text-lg font-bold text-white font-serif">{currentUser.name}</h2>
+              <h2 className="text-lg font-bold text-white font-serif">{currentUser.name || 'Citizen Reporter'}</h2>
               <div className="text-xs text-slate-400 font-mono">@{currentUser.username || 'username'}</div>
             </div>
           </div>
