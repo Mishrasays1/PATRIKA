@@ -6,7 +6,27 @@ const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [currentView, setCurrentView] = useState('feed');
   const [selectedStoryId, setSelectedStoryId] = useState(null);
-  const [stories, setStories] = useState([]);
+  
+  // Persist published stories in state & localStorage
+  const [stories, setStories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('patrika_stories');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Save stories to localStorage whenever updated
+  useEffect(() => {
+    if (stories && stories.length > 0) {
+      try {
+        localStorage.setItem('patrika_stories', JSON.stringify(stories));
+      } catch (e) {
+        console.log('LocalStorage stories save:', e);
+      }
+    }
+  }, [stories]);
   
   // Persist logged-in user profile in state & localStorage
   const [currentUser, setCurrentUser] = useState(() => {
@@ -42,12 +62,19 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Refresh backend data asynchronously without blocking UI
+  // Refresh backend data asynchronously & merge with local stories
   const refreshData = async () => {
     try {
       const fetchedStories = await api.getStories().catch(() => []);
       if (fetchedStories && fetchedStories.length > 0) {
-        setStories(fetchedStories);
+        setStories(prev => {
+          const map = new Map();
+          // Keep current local stories first
+          prev.forEach(s => map.set(s._id || s.id, s));
+          // Merge fetched stories from database
+          fetchedStories.forEach(s => map.set(s._id || s.id, s));
+          return Array.from(map.values());
+        });
       }
       const fetchedReports = await api.getReports().catch(() => []);
       if (fetchedReports) setReports(fetchedReports);
