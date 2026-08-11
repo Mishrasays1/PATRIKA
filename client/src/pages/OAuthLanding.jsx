@@ -158,12 +158,14 @@ export const OAuthLanding = () => {
   }, []);
 
   const handleInstantSignIn = () => {
-    const defaultEmail = 'rahulkrmishra5159@gmail.com';
-    const email = prompt('Sign in with your Google email:', defaultEmail) || defaultEmail;
+    const inputEmail = prompt('Enter any Google email address to sign in (e.g. user@gmail.com, editor@patrika.org):');
+    if (!inputEmail || !inputEmail.trim()) return;
+
+    const email = inputEmail.trim().toLowerCase();
 
     handleGoogleSuccess({
       userInfo: {
-        email: email.toLowerCase(),
+        email: email,
         name: email.split('@')[0].replace(/[^a-zA-Z0-9 ]/g, ' '),
         picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`
       }
@@ -197,14 +199,14 @@ export const OAuthLanding = () => {
           {/* Official Google Button Container */}
           <div ref={googleBtnRef} className="min-h-[44px] flex items-center justify-center w-full"></div>
 
-          {/* Instant 1-Click Sign In Button */}
+          {/* Instant Sign In Button for Any Email */}
           <button
             onClick={handleInstantSignIn}
             disabled={submitting}
             className="w-full py-3.5 px-6 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xl transition flex items-center justify-center gap-2 border border-emerald-500"
           >
             <UserCheck className="w-4 h-4" />
-            <span>{submitting ? 'Authenticating...' : 'Instant 1-Click Google Sign In'}</span>
+            <span>{submitting ? 'Authenticating...' : 'Sign in with Any Email / Google Account'}</span>
           </button>
 
         </div>
