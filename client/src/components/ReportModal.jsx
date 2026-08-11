@@ -99,9 +99,14 @@ export const ReportModal = ({ story, existingReport, isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Story Title */}
-        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
-          <span className="font-semibold text-white line-clamp-1">{story.title}</span>
+        {/* Reporting Target Article Headline Box */}
+        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 space-y-0.5">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold">
+            Reporting Article Headline:
+          </div>
+          <div className="font-bold text-slate-100 font-serif line-clamp-1">
+            "{story.title}"
+          </div>
         </div>
 
         {/* Flag Form */}
