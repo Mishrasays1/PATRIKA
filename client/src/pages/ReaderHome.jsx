@@ -303,7 +303,7 @@ export const ReaderHome = () => {
                     </p>
 
                     {/* Action Row */}
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-4">
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-4 flex-wrap">
                       <div className="text-xs text-slate-400">
                         By <span className="font-semibold text-slate-300">{story.reporter?.name || 'Citizen Reporter'}</span>
                       </div>
@@ -338,18 +338,18 @@ export const ReaderHome = () => {
                           <span>False ({story.downvotes || 0})</span>
                         </button>
 
-                        {/* FLAG STORY BUTTON */}
+                        {/* PROMINENT FLAG STORY BUTTON WITH VISIBLE TEXT */}
                         <button
                           onClick={(e) => handleOpenFlagModal(e, story)}
-                          className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow border ${
                             hasUserFlagged
-                              ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                              : 'text-slate-400 hover:text-rose-400 hover:bg-slate-900'
+                              ? 'bg-rose-950 border-rose-800 text-rose-300 shadow-rose-950'
+                              : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-rose-400'
                           }`}
-                          title={hasUserFlagged ? 'Edit / Delete Your Flag' : 'Flag Story'}
+                          title={hasUserFlagged ? 'Edit / Delete Your Flag' : 'Flag Misinformation'}
                         >
-                          <Flag className="w-4 h-4" />
-                          {hasUserFlagged && <span className="text-[10px]">Flagged</span>}
+                          <Flag className="w-3.5 h-3.5 text-rose-400" />
+                          <span>{hasUserFlagged ? 'Flagged' : 'Flag'}</span>
                         </button>
                       </div>
                     </div>

@@ -99,17 +99,21 @@ export const ReportModal = ({ story, existingReport, isOpen, onClose }) => {
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
             <Flag className="w-4 h-4 text-rose-500" />
-            <span>{isEditMode ? 'Edit Your Flag Report' : 'Flag Misinformation / Report Story'}</span>
+            <span>{isEditMode ? 'Edit Flag Report' : 'Flag Story for Misinformation'}</span>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Clean Target Story Headline Badge */}
-        <div className="p-3 rounded-2xl bg-rose-950/20 border border-rose-800/40 text-xs flex items-center gap-2">
-          <span className="text-slate-400 font-medium shrink-0">Flagging Story:</span>
-          <span className="font-bold text-white font-serif truncate">{story.title}</span>
+        {/* Clean Target Story Headline Card */}
+        <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+          <div className="text-[10px] uppercase font-mono tracking-wider font-semibold text-rose-400">
+            Target Article Headline:
+          </div>
+          <div className="text-xs font-bold text-slate-100 font-serif leading-snug line-clamp-2">
+            {story.title}
+          </div>
         </div>
 
         {/* Flag Form */}
