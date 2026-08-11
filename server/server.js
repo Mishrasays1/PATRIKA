@@ -1,9 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { connectDB } = require('./config/db');
-const Story = require('./models/Story');
-const { seedData } = require('./seed/seedDatabase');
 
 const authRoutes = require('./routes/authRoutes');
 const storyRoutes = require('./routes/storyRoutes');
@@ -14,10 +13,20 @@ const statsRoutes = require('./routes/statsRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Ensure database connection middleware for serverless / cloud deployments
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Database connection error: ' + err.message });
+  }
+});
+
 // Rate Limiting Rules
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 150, // Limit each IP to 150 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 150,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
@@ -25,13 +34,13 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // Strict limit for OAuth attempts
+  max: 20,
   message: { error: 'Too many OAuth authentication attempts. Please wait 15 minutes before retrying.' }
 });
 
 const storySubmissionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 25, // Limit story submissions per 15 mins to prevent spam
+  max: 25,
   message: { error: 'Story submission rate limit reached. Please wait before submitting more reports.' }
 });
 
@@ -43,7 +52,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Apply global rate limiting
 app.use('/api', globalLimiter);
 
-// Mount API Routes with specific rate limiters
+// Mount API Routes
 app.use('/api/auth/google', authLimiter);
 app.use('/api/auth', authRoutes);
 
@@ -59,29 +68,17 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'online', 
     platform: 'PATRIKA Citizen Journalism Verification Engine',
-    rateLimiting: 'active (150 req / 15 mins)',
     timestamp: new Date() 
   });
 });
 
-// Connect to Database & Start Server
-const startServer = async () => {
-  await connectDB();
-
-  // Auto seed if database has 0 stories
-  const count = await Story.countDocuments();
-  if (count === 0) {
-    console.log('Database empty on startup. Triggering auto-seeder...');
-    await seedData();
-  }
-
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`====================================================`);
     console.log(` PATRIKA Server running on http://localhost:${PORT}`);
-    console.log(` API Rate Limiting: ACTIVE`);
     console.log(` Health Check: http://localhost:${PORT}/api/health`);
     console.log(`====================================================`);
   });
-};
+}
 
-startServer();
+module.exports = app;
