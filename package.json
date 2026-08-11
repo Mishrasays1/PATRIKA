@@ -4,6 +4,8 @@
   "description": "Citizen Journalism Verification & Story Publishing Platform",
   "main": "server/server.js",
   "scripts": {
+    "start": "cd server && npm install && node server.js",
+    "build": "cd server && npm install",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "server": "cd server && npm start",
     "client": "cd client && npm run dev",
