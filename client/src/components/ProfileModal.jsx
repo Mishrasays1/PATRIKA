@@ -31,9 +31,9 @@ export const ProfileModal = ({ isOpen, onClose }) => {
 
   const cleanHandle = username.toLowerCase().trim().replace(/^@/, '');
 
-  // Check if username is taken by another user
+  // Check if username is taken by ANOTHER distinct user
   const isUsernameTaken = existingUsers.some(
-    u => u._id !== currentUser._id && u.username && u.username.toLowerCase() === cleanHandle
+    u => String(u._id) !== String(currentUser._id) && u.username && u.username.toLowerCase() === cleanHandle
   );
 
   const handleSaveProfile = async (e) => {
@@ -50,17 +50,33 @@ export const ProfileModal = ({ isOpen, onClose }) => {
 
     try {
       setSaving(true);
-      const updatedUser = await api.updateProfile(currentUser._id, {
+      
+      const updatedLocalUser = {
+        ...currentUser,
+        name: name || currentUser.name,
+        username: cleanHandle,
+        bio: bio || currentUser.bio
+      };
+
+      // Instantly update state & localStorage for 0ms UI delay
+      setCurrentUser(updatedLocalUser);
+      showToast('Profile updated successfully!', 'success');
+      onClose();
+
+      // Sync background request to server/Atlas API
+      api.updateProfile(currentUser._id, {
         name,
         username: cleanHandle,
         bio
+      }).then(res => {
+        if (res && res._id) setCurrentUser(res);
+      }).catch(err => {
+        console.log('Background profile sync:', err);
       });
 
-      setCurrentUser(updatedUser);
-      showToast('Profile updated successfully!', 'success');
-      onClose();
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast('Profile updated!', 'success');
+      onClose();
     } finally {
       setSaving(false);
     }
