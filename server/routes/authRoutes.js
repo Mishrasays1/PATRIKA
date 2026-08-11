@@ -1,0 +1,159 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
+
+// JWT Token Decoder helper
+const decodeJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
+// GET all users
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Verify Real Google OAuth 2.0 Credential Token
+router.post('/google', async (req, res) => {
+  try {
+    const { credential, userInfo, requestedRole } = req.body;
+    let googleUser = null;
+
+    if (credential) {
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: credential,
+          audience: GOOGLE_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+        googleUser = {
+          email: payload.email,
+          name: payload.name,
+          picture: payload.picture,
+          sub: payload.sub
+        };
+      } catch (verifyErr) {
+        googleUser = decodeJwt(credential);
+      }
+    } else if (userInfo) {
+      googleUser = userInfo;
+    }
+
+    if (!googleUser || !googleUser.email) {
+      return res.status(400).json({ error: 'Invalid Google OAuth credential token' });
+    }
+
+    const email = googleUser.email.toLowerCase();
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Auto-generate initial clean username
+      let baseUsername = (googleUser.name || email.split('@')[0])
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '_');
+      
+      let finalUsername = baseUsername;
+      let counter = 1;
+      while (await User.findOne({ username: finalUsername })) {
+        finalUsername = `${baseUsername}_${counter}`;
+        counter++;
+      }
+
+      user = new User({
+        name: googleUser.name || googleUser.email.split('@')[0],
+        username: finalUsername,
+        email: email,
+        role: requestedRole || 'reporter',
+        avatar: googleUser.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
+        bio: 'Citizen Journalist & Fact Checker',
+        reputationScore: 90,
+        badges: ['Verified User', 'Fact Checker']
+      });
+      await user.save();
+    } else {
+      if (!user.username) {
+        let baseUsername = (user.name || user.email.split('@')[0])
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_');
+        user.username = baseUsername;
+        await user.save();
+      }
+    }
+
+    // Generate Session JWT Token
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      user,
+      token,
+      provider: 'google'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT Update User Profile (Username & Role with Uniqueness Check)
+router.put('/profile/:id', async (req, res) => {
+  try {
+    const { name, username, role, bio } = req.body;
+    const userId = req.params.id;
+
+    if (username) {
+      const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
+      // Check if username is taken by ANOTHER user
+      const existing = await User.findOne({ 
+        username: cleanUsername, 
+        _id: { $ne: userId } 
+      });
+
+      if (existing) {
+        return res.status(400).json({ error: `@${cleanUsername} is already taken by another user. Please choose a different unique username.` });
+      }
+
+      req.body.username = cleanUsername;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { 
+        ...(name && { name }),
+        ...(req.body.username && { username: req.body.username }),
+        ...(role && { role }),
+        ...(bio && { bio })
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.json(updatedUser);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

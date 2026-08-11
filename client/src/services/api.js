@@ -1,0 +1,152 @@
+const API_BASE = '/api';
+
+export const api = {
+  // Stories
+  async getStories(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/stories${query ? `?${query}` : ''}`);
+    if (!res.ok) throw new Error('Failed to fetch stories');
+    return res.json();
+  },
+
+  async getStoryById(id) {
+    const res = await fetch(`${API_BASE}/stories/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch story details');
+    return res.json();
+  },
+
+  async createStory(storyData) {
+    const res = await fetch(`${API_BASE}/stories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(storyData),
+    });
+    if (!res.ok) throw new Error('Failed to create story');
+    return res.json();
+  },
+
+  async deleteStory(id) {
+    const res = await fetch(`${API_BASE}/stories/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete story');
+    return data;
+  },
+
+  async voteStory(id, userId, voteType) {
+    const res = await fetch(`${API_BASE}/stories/${id}/vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, voteType }),
+    });
+    return res.json();
+  },
+
+  async upvoteStory(id) {
+    const res = await fetch(`${API_BASE}/stories/${id}/upvote`, { method: 'POST' });
+    return res.json();
+  },
+
+  async downvoteStory(id) {
+    const res = await fetch(`${API_BASE}/stories/${id}/downvote`, { method: 'POST' });
+    return res.json();
+  },
+
+  async addComment(id, commentData) {
+    const res = await fetch(`${API_BASE}/stories/${id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(commentData),
+    });
+    return res.json();
+  },
+
+  async updateComment(storyId, commentId, text) {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    return res.json();
+  },
+
+  async deleteComment(storyId, commentId) {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/comments/${commentId}`, {
+      method: 'DELETE'
+    });
+    return res.json();
+  },
+
+  // Misinformation Reports
+  async submitReport(reportData) {
+    const res = await fetch(`${API_BASE}/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reportData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to submit report');
+    return data;
+  },
+
+  async updateReport(id, reportData) {
+    const res = await fetch(`${API_BASE}/reports/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reportData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update report');
+    return data;
+  },
+
+  async deleteReport(id) {
+    const res = await fetch(`${API_BASE}/reports/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete report');
+    return data;
+  },
+
+  async getReports(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/reports${query ? `?${query}` : ''}`);
+    return res.json();
+  },
+
+  // Users & Real Google OAuth
+  async getUsers() {
+    const res = await fetch(`${API_BASE}/auth/users`);
+    return res.json();
+  },
+
+  async loginWithGoogle(googlePayload) {
+    const res = await fetch(`${API_BASE}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(googlePayload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Google OAuth 2.0 login failed');
+    return data;
+  },
+
+  async updateProfile(userId, profileData) {
+    const res = await fetch(`${API_BASE}/auth/profile/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Profile update failed');
+    return data;
+  },
+
+  // Stats
+  async getStats() {
+    const res = await fetch(`${API_BASE}/stats`);
+    return res.json();
+  }
+};
