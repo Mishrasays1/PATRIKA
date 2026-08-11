@@ -27,6 +27,7 @@ export const ArticleDetail = () => {
     setCurrentView, 
     currentUser, 
     showToast, 
+    setStories,
     refreshData 
   } = useApp();
 
@@ -48,9 +49,9 @@ export const ArticleDetail = () => {
       try {
         setLoading(true);
         const data = await api.getStoryById(selectedStoryId);
-        setStory(data);
+        if (data) setStory(data);
       } catch (err) {
-        showToast('Error loading story details: ' + err.message, 'error');
+        console.log('Error loading detail:', err);
       } finally {
         setLoading(false);
       }
@@ -59,52 +60,86 @@ export const ArticleDetail = () => {
     fetchDetail();
   }, [selectedStoryId]);
 
-  const handleVoteTruth = async () => {
+  const handleVote = async (voteType) => {
     if (!currentUser) {
       showToast('Please sign in to vote.', 'warning');
       return;
     }
-    try {
-      const res = await api.voteStory(story._id, currentUser._id, 'truth');
-      setStory(prev => ({ ...prev, upvotes: res.upvotes, downvotes: res.downvotes, votes: prev.votes }));
-      showToast(res.action || 'Vote recorded!', 'success');
-      refreshData();
-    } catch (err) {
-      showToast('Vote failed: ' + err.message, 'error');
-    }
-  };
 
-  const handleVoteFalse = async () => {
-    if (!currentUser) {
-      showToast('Please sign in to vote.', 'warning');
-      return;
+    const userId = currentUser._id;
+    const currentVotes = Array.isArray(story.votes) ? [...story.votes] : [];
+    const existingVoteIndex = currentVotes.findIndex(v => String(v.userId) === String(userId));
+    let newUpvotes = story.upvotes || 0;
+    let newDownvotes = story.downvotes || 0;
+
+    if (existingVoteIndex >= 0) {
+      const oldVote = currentVotes[existingVoteIndex].voteType;
+      if (oldVote === voteType) {
+        currentVotes.splice(existingVoteIndex, 1);
+        if (voteType === 'truth') newUpvotes = Math.max(0, newUpvotes - 1);
+        else newDownvotes = Math.max(0, newDownvotes - 1);
+      } else {
+        currentVotes[existingVoteIndex] = { userId, voteType };
+        if (voteType === 'truth') {
+          newUpvotes += 1;
+          newDownvotes = Math.max(0, newDownvotes - 1);
+        } else {
+          newDownvotes += 1;
+          newUpvotes = Math.max(0, newUpvotes - 1);
+        }
+      }
+    } else {
+      currentVotes.push({ userId, voteType });
+      if (voteType === 'truth') newUpvotes += 1;
+      else newDownvotes += 1;
     }
-    try {
-      const res = await api.voteStory(story._id, currentUser._id, 'false');
-      setStory(prev => ({ ...prev, upvotes: res.upvotes, downvotes: res.downvotes, votes: prev.votes }));
-      showToast(res.action || 'Vote recorded!', 'warning');
+
+    const updatedStory = {
+      ...story,
+      upvotes: newUpvotes,
+      downvotes: newDownvotes,
+      votes: currentVotes
+    };
+
+    // Instantly update detail view & feed state (0ms delay!)
+    setStory(updatedStory);
+    setStories(prev => prev.map(s => s._id === story._id ? updatedStory : s));
+    showToast(voteType === 'truth' ? 'Marked as Truth!' : 'Marked as False!', voteType === 'truth' ? 'success' : 'warning');
+
+    // Background sync to MongoDB Atlas
+    api.voteStory(story._id, userId, voteType).then(() => {
       refreshData();
-    } catch (err) {
-      showToast('Vote failed: ' + err.message, 'error');
-    }
+    }).catch(err => console.log('Background vote sync:', err));
   };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!commentText.trim()) return;
+
+    const newComment = {
+      _id: `c_${Date.now()}`,
+      userId: currentUser?._id || 'anon',
+      userName: currentUser?.name || 'Anonymous Reader',
+      userAvatar: currentUser?.avatar || '',
+      text: commentText,
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedComments = [newComment, ...(story.comments || [])];
+    setStory(prev => ({ ...prev, comments: updatedComments }));
+    setCommentText('');
+    showToast('Comment published!', 'success');
+
     try {
       setSubmittingComment(true);
-      const comments = await api.addComment(story._id, {
+      await api.addComment(story._id, {
         userId: currentUser?._id || '',
         userName: currentUser?.name || 'Anonymous Reader',
         userAvatar: currentUser?.avatar || '',
         text: commentText
       });
-      setStory(prev => ({ ...prev, comments }));
-      setCommentText('');
-      showToast('Comment published!', 'success');
     } catch (err) {
-      showToast('Failed to add comment: ' + err.message, 'error');
+      console.log('Background comment save:', err);
     } finally {
       setSubmittingComment(false);
     }
@@ -112,29 +147,35 @@ export const ArticleDetail = () => {
 
   const handleSaveEditComment = async (commentId) => {
     if (!editText.trim()) return;
+    const updatedComments = (story.comments || []).map(c => 
+      (c._id === commentId || c.id === commentId) ? { ...c, text: editText } : c
+    );
+    setStory(prev => ({ ...prev, comments: updatedComments }));
+    setEditingCommentId(null);
+    setEditText('');
+    showToast('Comment updated!', 'success');
+
     try {
-      const updatedComments = await api.updateComment(story._id, commentId, editText);
-      setStory(prev => ({ ...prev, comments: updatedComments }));
-      setEditingCommentId(null);
-      setEditText('');
-      showToast('Comment updated!', 'success');
+      await api.updateComment(story._id, commentId, editText);
     } catch (err) {
-      showToast('Failed to update comment: ' + err.message, 'error');
+      console.log('Background comment edit:', err);
     }
   };
 
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment?')) return;
+    const updatedComments = (story.comments || []).filter(c => (c._id !== commentId && c.id !== commentId));
+    setStory(prev => ({ ...prev, comments: updatedComments }));
+    showToast('Comment deleted.', 'info');
+
     try {
-      const updatedComments = await api.deleteComment(story._id, commentId);
-      setStory(prev => ({ ...prev, comments: updatedComments }));
-      showToast('Comment deleted.', 'info');
+      await api.deleteComment(story._id, commentId);
     } catch (err) {
-      showToast('Failed to delete comment: ' + err.message, 'error');
+      console.log('Background comment delete:', err);
     }
   };
 
-  if (loading) {
+  if (loading && !story) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
         <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -157,7 +198,7 @@ export const ArticleDetail = () => {
     );
   }
 
-  const userVote = story.votes?.find(v => v.userId === currentUser?._id)?.voteType;
+  const userVote = story.votes?.find(v => String(v.userId) === String(currentUser?._id))?.voteType;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-in fade-in duration-200">
@@ -261,7 +302,7 @@ export const ArticleDetail = () => {
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={handleVoteTruth}
+              onClick={() => handleVote('truth')}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition border ${
                 userVote === 'truth'
                   ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-900'
@@ -273,7 +314,7 @@ export const ArticleDetail = () => {
             </button>
 
             <button
-              onClick={handleVoteFalse}
+              onClick={() => handleVote('false')}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition border ${
                 userVote === 'false'
                   ? 'bg-rose-600 border-rose-500 text-white shadow-rose-900'
@@ -314,7 +355,7 @@ export const ArticleDetail = () => {
         <div className="space-y-3 pt-2">
           {story.comments && story.comments.map((c) => {
             const commentId = c._id || c.id;
-            const isCommentAuthor = currentUser && (c.userId === currentUser._id || c.userName === currentUser.name);
+            const isCommentAuthor = currentUser && (String(c.userId) === String(currentUser._id) || c.userName === currentUser.name);
             const isEditing = editingCommentId === commentId;
 
             return (

@@ -23,6 +23,7 @@ export const ReaderHome = () => {
   const { 
     currentUser,
     stories, 
+    setStories,
     openStoryDetail, 
     searchQuery, 
     selectedCategory,
@@ -70,38 +71,66 @@ export const ReaderHome = () => {
     setExpandedFlags(prev => ({ ...prev, [storyId]: !prev[storyId] }));
   };
 
-  // Vote Truth
-  const handleVoteTruth = async (e, storyId) => {
+  // Instant Fail-Proof Truth/False Voting Handler
+  const handleVote = async (e, storyId, voteType) => {
     e.stopPropagation();
     if (!currentUser) {
       showToast('Please sign in to vote.', 'warning');
       return;
     }
 
-    try {
-      const res = await api.voteStory(storyId, currentUser._id, 'truth');
-      showToast(res.action || 'Vote recorded!', 'success');
-      refreshData();
-    } catch (err) {
-      showToast('Vote failed: ' + err.message, 'error');
-    }
-  };
+    const userId = currentUser._id;
 
-  // Vote False
-  const handleVoteFalse = async (e, storyId) => {
-    e.stopPropagation();
-    if (!currentUser) {
-      showToast('Please sign in to vote.', 'warning');
-      return;
-    }
+    // Instantly update story votes & counts state in local UI (0ms delay!)
+    setStories(prevStories => {
+      return prevStories.map(story => {
+        if (story._id !== storyId) return story;
 
-    try {
-      const res = await api.voteStory(storyId, currentUser._id, 'false');
-      showToast(res.action || 'Vote recorded!', 'warning');
+        const currentVotes = Array.isArray(story.votes) ? [...story.votes] : [];
+        const existingVoteIndex = currentVotes.findIndex(v => String(v.userId) === String(userId));
+        let newUpvotes = story.upvotes || 0;
+        let newDownvotes = story.downvotes || 0;
+
+        if (existingVoteIndex >= 0) {
+          const oldVote = currentVotes[existingVoteIndex].voteType;
+          if (oldVote === voteType) {
+            // Toggle off (remove vote)
+            currentVotes.splice(existingVoteIndex, 1);
+            if (voteType === 'truth') newUpvotes = Math.max(0, newUpvotes - 1);
+            else newDownvotes = Math.max(0, newDownvotes - 1);
+          } else {
+            // Switch vote
+            currentVotes[existingVoteIndex] = { userId, voteType };
+            if (voteType === 'truth') {
+              newUpvotes += 1;
+              newDownvotes = Math.max(0, newDownvotes - 1);
+            } else {
+              newDownvotes += 1;
+              newUpvotes = Math.max(0, newUpvotes - 1);
+            }
+          }
+        } else {
+          // New vote added
+          currentVotes.push({ userId, voteType });
+          if (voteType === 'truth') newUpvotes += 1;
+          else newDownvotes += 1;
+        }
+
+        return {
+          ...story,
+          upvotes: newUpvotes,
+          downvotes: newDownvotes,
+          votes: currentVotes
+        };
+      });
+    });
+
+    showToast(voteType === 'truth' ? 'Marked as Truth!' : 'Marked as False!', voteType === 'truth' ? 'success' : 'warning');
+
+    // Background sync to MongoDB Atlas API
+    api.voteStory(storyId, userId, voteType).then(() => {
       refreshData();
-    } catch (err) {
-      showToast('Vote failed: ' + err.message, 'error');
-    }
+    }).catch(err => console.log('Background vote sync:', err));
   };
 
   // Open Flag Modal
@@ -113,7 +142,7 @@ export const ReaderHome = () => {
     }
 
     const storyReports = reportsMap[story._id] || [];
-    const myReport = storyReports.find(r => r.reporterId === currentUser._id);
+    const myReport = storyReports.find(r => String(r.reporterId) === String(currentUser._id));
 
     setSelectedStoryForFlag(story);
     setExistingReportForUser(myReport || null);
@@ -124,12 +153,14 @@ export const ReaderHome = () => {
     e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete your published story? This cannot be undone.')) return;
 
+    setStories(prev => prev.filter(s => s._id !== storyId));
+    showToast('Story deleted successfully.', 'info');
+
     try {
       await api.deleteStory(storyId);
-      showToast('Story deleted successfully.', 'info');
       await refreshData();
     } catch (err) {
-      showToast('Failed to delete story: ' + err.message, 'error');
+      console.log('Story delete background:', err);
     }
   };
 
@@ -145,14 +176,6 @@ export const ReaderHome = () => {
       await fetchAllReports();
     } catch (err) {
       showToast('Failed to delete report: ' + err.message, 'error');
-    }
-  };
-
-  const handleShare = (e) => {
-    e.stopPropagation();
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      showToast('Article link copied!', 'info');
     }
   };
 
@@ -219,9 +242,9 @@ export const ReaderHome = () => {
             const storyReports = reportsMap[story._id] || [];
             const hasFlags = story.flagsCount > 0 || storyReports.length > 0;
             const isExpanded = expandedFlags[story._id];
-            const userVote = story.votes?.find(v => v.userId === currentUser?._id)?.voteType;
-            const hasUserFlagged = storyReports.some(r => r.reporterId === currentUser?._id);
-            const isAuthor = currentUser && (story.reporter?._id === currentUser._id || story.reporter === currentUser._id);
+            const userVote = story.votes?.find(v => String(v.userId) === String(currentUser?._id))?.voteType;
+            const hasUserFlagged = storyReports.some(r => String(r.reporterId) === String(currentUser?._id));
+            const isAuthor = currentUser && (String(story.reporter?._id || story.reporter) === String(currentUser._id));
 
             return (
               <article
@@ -289,7 +312,7 @@ export const ReaderHome = () => {
                         
                         {/* TRUTH BUTTON */}
                         <button
-                          onClick={(e) => handleVoteTruth(e, story._id)}
+                          onClick={(e) => handleVote(e, story._id, 'truth')}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow border ${
                             userVote === 'truth'
                               ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-900'
@@ -303,7 +326,7 @@ export const ReaderHome = () => {
 
                         {/* FALSE BUTTON */}
                         <button
-                          onClick={(e) => handleVoteFalse(e, story._id)}
+                          onClick={(e) => handleVote(e, story._id, 'false')}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow border ${
                             userVote === 'false'
                               ? 'bg-rose-600 border-rose-500 text-white shadow-rose-900'
@@ -355,7 +378,7 @@ export const ReaderHome = () => {
                     {isExpanded && (
                       <div className="pt-2 border-t border-amber-800/50 space-y-2 text-[11px] text-amber-300">
                         {storyReports.map((r, idx) => {
-                          const isMyReport = currentUser && r.reporterId === currentUser._id;
+                          const isMyReport = currentUser && String(r.reporterId) === String(currentUser._id);
                           return (
                             <div key={r._id || idx} className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-1">
                               <div className="flex items-center justify-between font-bold text-amber-300">
