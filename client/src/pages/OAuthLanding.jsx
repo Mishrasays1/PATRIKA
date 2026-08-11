@@ -49,7 +49,7 @@ export const OAuthLanding = () => {
         console.log('Backend OAuth response fallback:', backendErr);
       }
 
-      // 2. Client-side Direct Decode Fallback (Instant, 100% Reliable)
+      // 2. Client-side Direct Decode Fallback
       if (!userData && googlePayload.credential) {
         const decoded = parseGoogleCredential(googlePayload.credential);
         if (decoded && decoded.email) {
@@ -59,7 +59,7 @@ export const OAuthLanding = () => {
             .replace(/[^a-z0-9_]/g, '_');
 
           userData = {
-            _id: decoded.sub || `user_${Date.now()}`,
+            _id: decoded.sub || `user_${email.replace(/[^a-z0-9]/g, '_')}`,
             name: decoded.name || email.split('@')[0],
             username: cleanUsername,
             email: email,
@@ -76,7 +76,7 @@ export const OAuthLanding = () => {
       if (!userData && googlePayload.userInfo) {
         const email = googlePayload.userInfo.email.toLowerCase();
         userData = {
-          _id: `user_${Date.now()}`,
+          _id: `user_${email.replace(/[^a-z0-9]/g, '_')}`,
           name: googlePayload.userInfo.name || email.split('@')[0],
           username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_'),
           email: email,
@@ -86,6 +86,24 @@ export const OAuthLanding = () => {
           reputationScore: 90,
           badges: ['Verified User']
         };
+      }
+
+      // 4. PRESERVE EDITED CUSTOM PROFILE FROM LOCAL STORAGE
+      if (userData && userData.email) {
+        try {
+          const savedCustomProfile = localStorage.getItem(`patrika_profile_${userData.email.toLowerCase()}`);
+          if (savedCustomProfile) {
+            const parsed = JSON.parse(savedCustomProfile);
+            userData = {
+              ...userData,
+              name: parsed.name || userData.name,
+              username: parsed.username || userData.username,
+              bio: parsed.bio || userData.bio
+            };
+          }
+        } catch (e) {
+          console.log('Profile restore error:', e);
+        }
       }
 
       if (userData) {

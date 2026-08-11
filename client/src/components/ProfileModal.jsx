@@ -58,12 +58,21 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         bio: bio || currentUser.bio
       };
 
-      // Instantly update state & localStorage for 0ms UI delay
+      // 1. Save permanently in persistent storage for this email
+      if (currentUser.email) {
+        try {
+          localStorage.setItem(`patrika_profile_${currentUser.email.toLowerCase()}`, JSON.stringify(updatedLocalUser));
+        } catch (e) {
+          console.log('Error caching custom profile:', e);
+        }
+      }
+
+      // 2. Instantly update state & localStorage for 0ms UI delay
       setCurrentUser(updatedLocalUser);
       showToast('Profile updated successfully!', 'success');
       onClose();
 
-      // Sync background request to server/Atlas API
+      // 3. Sync background request to server/Atlas API
       api.updateProfile(currentUser._id, {
         name,
         username: cleanHandle,
