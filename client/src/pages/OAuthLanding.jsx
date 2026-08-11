@@ -3,7 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '761963955701-2mclmabgns1ia9mido9hji1oo1i394es.apps.googleusercontent.com';
 
 export const OAuthLanding = () => {
   const { setCurrentUser, setActiveRole, setCurrentView, showToast } = useApp();
