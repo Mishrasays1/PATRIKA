@@ -11,10 +11,11 @@ import { SubmitStory } from './pages/SubmitStory';
 import { MediaLiteracy } from './pages/MediaLiteracy';
 import { VerificationDesk } from './pages/VerificationDesk';
 import { ReporterDashboard } from './pages/ReporterDashboard';
+import { AdminLogin } from './pages/AdminLogin';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const MainContent = () => {
-  const { currentView, currentUser, toast } = useApp();
+  const { currentView, setCurrentView, currentUser, toast } = useApp();
 
   // Mandatory OAuth Gatekeeper: If user is not authenticated, show OAuth Landing Page
   if (!currentUser) {
@@ -40,6 +41,9 @@ const MainContent = () => {
 
       case 'verification':
         return <VerificationDesk />;
+
+      case 'admin_login':
+        return <AdminLogin onBackToUserAuth={() => setCurrentView('feed')} />;
 
       case 'literacy':
         return <MediaLiteracy />;

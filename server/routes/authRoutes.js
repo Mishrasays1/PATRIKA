@@ -7,6 +7,10 @@ const { OAuth2Client } = require('google-auth-library');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
 
+// MASTER ADMIN CREDENTIAL CONSTANTS
+const MASTER_ADMIN_EMAIL = 'admin@patrika.org';
+const MASTER_ADMIN_PASSWORD = 'PatrikaAdmin#2026';
+
 // JWT Token Decoder helper
 const decodeJwt = (token) => {
   try {
@@ -23,6 +27,47 @@ const decodeJwt = (token) => {
     return null;
   }
 };
+
+// Seed & Ensure Single Master Admin and Reset all other users
+const ensureMasterAdminAndResetOthers = async () => {
+  try {
+    // 1. Remove admin role from all existing users EXCEPT master admin
+    await User.updateMany(
+      { email: { $ne: MASTER_ADMIN_EMAIL } },
+      { $set: { role: 'reporter', isAdminVerified: false, adminApprovalStatus: 'none' } }
+    );
+
+    // 2. Ensure Master Admin account exists
+    let masterUser = await User.findOne({ email: MASTER_ADMIN_EMAIL });
+    if (!masterUser) {
+      masterUser = new User({
+        name: 'PATRIKA Lead Admin',
+        username: 'admin_master',
+        email: MASTER_ADMIN_EMAIL,
+        role: 'admin',
+        adminApprovalStatus: 'approved',
+        isAdminVerified: true,
+        location: 'Platform Headquarters',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=patrika_lead_admin',
+        bio: 'Exclusive Platform Lead Admin & Fact Checker',
+        reputationScore: 100,
+        badges: ['Verified Admin', 'Lead Fact Checker']
+      });
+      await masterUser.save();
+      console.log(`[Master Admin Seed] Created exclusive Master Admin: ${MASTER_ADMIN_EMAIL}`);
+    } else {
+      masterUser.role = 'admin';
+      masterUser.isAdminVerified = true;
+      masterUser.adminApprovalStatus = 'approved';
+      await masterUser.save();
+    }
+  } catch (err) {
+    console.log('Error enforcing Master Admin reset:', err.message);
+  }
+};
+
+// Execute reset on router load
+ensureMasterAdminAndResetOthers();
 
 // GET all users
 router.get('/users', async (req, res) => {
@@ -43,6 +88,12 @@ router.post('/register', async (req, res) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Block non-master users from registering with master admin email
+    if (cleanEmail === MASTER_ADMIN_EMAIL) {
+      return res.status(400).json({ error: 'Please use the dedicated Admin Portal to sign in.' });
+    }
+
     let user = await User.findOne({ email: cleanEmail });
     if (user) {
       return res.json({ user, message: 'Existing account found in MongoDB Atlas.' });
@@ -136,7 +187,7 @@ router.post('/admin/register', async (req, res) => {
     let user = await User.findOne({ email: cleanEmail });
 
     // Developer Passkey Auto-Approval Check
-    const isAutoApproved = developerPasskey === 'PATRIKA_DEV_2026' || developerPasskey === 'DEV123' || cleanEmail.includes('rahulkrmishra') || cleanEmail.includes('mishrasays1');
+    const isAutoApproved = developerPasskey === 'PATRIKA_DEV_2026' || developerPasskey === 'DEV123' || cleanEmail === MASTER_ADMIN_EMAIL;
 
     if (!user) {
       let baseUsername = `admin_${cleanEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
@@ -187,19 +238,32 @@ router.post('/admin/register', async (req, res) => {
   }
 });
 
-// DEDICATED ADMIN LOGIN
+// DEDICATED EXCLUSIVE ADMIN LOGIN
 router.post('/admin/login', async (req, res) => {
   try {
     const { email, password, developerPasskey } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email address is required.' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Admin Email and Password are required.' });
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Check Master Admin Credentials
+    if (cleanEmail === MASTER_ADMIN_EMAIL && password === MASTER_ADMIN_PASSWORD) {
+      await ensureMasterAdminAndResetOthers();
+      let masterUser = await User.findOne({ email: MASTER_ADMIN_EMAIL });
+      const token = jwt.sign(
+        { userId: masterUser._id, email: masterUser.email, role: 'admin' },
+        process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
+        { expiresIn: '7d' }
+      );
+      return res.json({ user: masterUser, token, message: 'Welcome Master Admin!' });
+    }
+
     let user = await User.findOne({ email: cleanEmail });
 
     // Developer Passkey Override
-    const isDevPass = developerPasskey === 'PATRIKA_DEV_2026' || developerPasskey === 'DEV123' || cleanEmail.includes('rahulkrmishra') || cleanEmail.includes('mishrasays1');
+    const isDevPass = developerPasskey === 'PATRIKA_DEV_2026' || developerPasskey === 'DEV123';
 
     if (isDevPass && user) {
       user.role = 'admin';
@@ -209,7 +273,7 @@ router.post('/admin/login', async (req, res) => {
     }
 
     if (!user) {
-      return res.status(400).json({ error: 'No Admin account found with this email. Please submit an Admin Access Request.' });
+      return res.status(400).json({ error: 'Invalid Admin Credentials. Please use the Master Admin login or submit an Admin Access Request.' });
     }
 
     if (!user.isAdminVerified && user.role !== 'admin') {

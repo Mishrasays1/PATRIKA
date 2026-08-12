@@ -9,7 +9,8 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  CheckSquare
+  CheckSquare,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProfileModal } from './ProfileModal';
@@ -27,6 +28,8 @@ export const Navbar = () => {
 
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdminVerified;
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -106,16 +109,29 @@ export const Navbar = () => {
               <span>My Tracker</span>
             </button>
 
-            {/* Admin Flow: Verification & Review Portal */}
-            <button
-              onClick={() => navTo('verification')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
-                currentView === 'verification' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
-              <span>Admin Verification</span>
-            </button>
+            {/* Admin Verification Desk (If Verified Admin) */}
+            {isAdmin ? (
+              <button
+                onClick={() => navTo('verification')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                  currentView === 'verification' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span>Admin Workbench</span>
+              </button>
+            ) : (
+              /* Dedicated Admin Login Link for regular users after OAuth login */
+              <button
+                onClick={() => navTo('admin_login')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                  currentView === 'admin_login' ? 'bg-amber-600 text-white shadow-md' : 'bg-amber-950/40 border border-amber-800/60 text-amber-300 hover:bg-amber-900/60'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Admin Login</span>
+              </button>
+            )}
 
           </nav>
 
@@ -191,15 +207,27 @@ export const Navbar = () => {
                 <span>My Tracker</span>
               </button>
 
-              <button
-                onClick={() => navTo('verification')}
-                className={`p-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition ${
-                  currentView === 'verification' ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-300'
-                }`}
-              >
-                <CheckSquare className="w-4 h-4 text-amber-400" />
-                <span>Admin Review</span>
-              </button>
+              {isAdmin ? (
+                <button
+                  onClick={() => navTo('verification')}
+                  className={`p-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition ${
+                    currentView === 'verification' ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-300'
+                  }`}
+                >
+                  <CheckSquare className="w-4 h-4 text-amber-400" />
+                  <span>Admin Review</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navTo('admin_login')}
+                  className={`p-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition ${
+                    currentView === 'admin_login' ? 'bg-amber-600 text-white' : 'bg-amber-950/60 border border-amber-800 text-amber-300'
+                  }`}
+                >
+                  <Lock className="w-4 h-4 text-amber-400" />
+                  <span>Admin Login</span>
+                </button>
+              )}
             </div>
 
             <div className="pt-2 flex justify-between items-center text-xs text-slate-400 border-t border-slate-900">
