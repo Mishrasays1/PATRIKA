@@ -69,6 +69,10 @@ router.put('/:id/status', async (req, res) => {
     if (!story) return res.status(404).json({ error: 'Story not found' });
 
     story.status = status;
+    if (status === 'approved') {
+      story.trustScore = 95;
+      story.trustLevel = 'High Confidence';
+    }
     if (reviewerNotes !== undefined) story.reviewerNotes = reviewerNotes;
 
     await story.save();
@@ -78,7 +82,7 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
-// POST create story with Location & Reviewer Comments
+// POST create story with Location & Reviewer Comments (Default Status: PENDING)
 router.post('/', async (req, res) => {
   try {
     const {
@@ -102,11 +106,11 @@ router.post('/', async (req, res) => {
       category,
       media: media || [],
       evidenceAttachments: evidenceAttachments || [],
-      status: 'approved',
-      trustScore: 88,
-      trustLevel: 'High Confidence',
+      status: 'pending',
+      trustScore: 60,
+      trustLevel: 'Unverified',
       reporter: reporterId,
-      reviewerNotes: reviewerNotes || 'Ground evidence verified by community fact checkers.',
+      reviewerNotes: reviewerNotes || 'Pending Admin verification review.',
       isUrgent: isUrgent || false,
       upvotes: 0,
       downvotes: 0,

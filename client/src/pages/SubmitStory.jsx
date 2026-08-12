@@ -7,7 +7,8 @@ import {
   CheckCircle2, 
   ArrowLeft,
   FolderOpen,
-  MapPin
+  MapPin,
+  Clock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -62,9 +63,11 @@ export const SubmitStory = () => {
       return;
     }
 
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdminVerified;
     const finalImage = imageUrl || 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800';
     const tempId = `story_${Date.now()}`;
 
+    // STRICT UNVERIFIED STATUS FOR NORMAL USERS UNTIL ADMIN APPROVES
     const newStoryObj = {
       _id: tempId,
       title,
@@ -79,15 +82,15 @@ export const SubmitStory = () => {
           caption: imageCaption || 'Reporter ground evidence photo'
         }
       ],
-      status: 'approved',
-      trustScore: 88,
-      trustLevel: 'High Confidence',
+      status: isAdmin ? 'approved' : 'pending',
+      trustScore: isAdmin ? 95 : 60,
+      trustLevel: isAdmin ? 'High Confidence' : 'Unverified',
       reporter: {
         _id: currentUser?._id || 'user_anon',
         name: currentUser?.name || 'Citizen Reporter',
         username: currentUser?.username || 'reporter'
       },
-      reviewerNotes: 'Ground evidence verified by community fact checkers.',
+      reviewerNotes: isAdmin ? 'Published by Verified Lead Admin.' : 'Pending Admin verification review.',
       upvotes: 0,
       downvotes: 0,
       votes: [],
@@ -99,8 +102,14 @@ export const SubmitStory = () => {
 
       // Instantly update UI for 0ms delay!
       setStories(prev => [newStoryObj, ...prev]);
-      showToast('Story published successfully!', 'success');
-      setCurrentView('feed');
+
+      if (isAdmin) {
+        showToast('Story published & verified by Admin!', 'success');
+        setCurrentView('feed');
+      } else {
+        showToast('Story submitted! Marked as UNVERIFIED pending Admin approval.', 'info');
+        setCurrentView('dashboard'); // Navigate to My Tracker for verification tracking
+      }
 
       // Sync background request to MongoDB Atlas
       api.createStory({
@@ -118,8 +127,8 @@ export const SubmitStory = () => {
       });
 
     } catch (err) {
-      showToast('Story published to feed!', 'success');
-      setCurrentView('feed');
+      showToast('Story submitted for verification!', 'info');
+      setCurrentView('dashboard');
     } finally {
       setSubmitting(false);
     }
@@ -136,7 +145,7 @@ export const SubmitStory = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white font-serif">Publisher Workspace</h1>
-            <p className="text-xs text-slate-400">Write and publish your citizen report</p>
+            <p className="text-xs text-slate-400">Write and submit your ground report for Admin verification</p>
           </div>
         </div>
 
@@ -294,6 +303,14 @@ export const SubmitStory = () => {
           )}
         </div>
 
+        {/* Notice Banner for Normal Users */}
+        {!(currentUser?.role === 'admin' || currentUser?.isAdminVerified) && (
+          <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs flex items-center gap-2 font-medium">
+            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Note: Stories published by regular users are marked as <strong>UNVERIFIED</strong> until reviewed and approved by an Admin.</span>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="pt-2 flex justify-end">
           <button
@@ -302,7 +319,7 @@ export const SubmitStory = () => {
             className="px-8 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xl transition flex items-center gap-2 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            <span>{submitting ? 'Publishing...' : 'Publish Story'}</span>
+            <span>{submitting ? 'Submitting...' : 'Submit Story for Verification'}</span>
           </button>
         </div>
 

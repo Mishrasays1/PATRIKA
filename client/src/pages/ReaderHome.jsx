@@ -321,9 +321,13 @@ export const ReaderHome = () => {
                       alt={story.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
-                    <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-emerald-500/40 text-emerald-400 text-[10px] font-bold flex items-center gap-1 font-mono">
+                    <div className={`absolute top-2 left-2 px-2.5 py-1 rounded-full backdrop-blur-md font-bold flex items-center gap-1 font-mono text-[10px] ${
+                      story.status === 'approved' 
+                        ? 'bg-slate-950/80 border border-emerald-500/40 text-emerald-400' 
+                        : 'bg-amber-950/90 border border-amber-500/60 text-amber-300'
+                    }`}>
                       <ShieldCheck className="w-3 h-3" />
-                      <span>{story.status === 'approved' ? 'Verified' : 'Pending'}</span>
+                      <span>{story.status === 'approved' ? 'Verified' : '⏳ Unverified (Pending Review)'}</span>
                     </div>
                   </div>
 
