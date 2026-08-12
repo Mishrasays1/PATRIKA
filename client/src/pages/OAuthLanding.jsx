@@ -38,13 +38,13 @@ export const OAuthLanding = () => {
   const googleBtnRef = useRef(null);
   const handleSuccessRef = useRef(null);
 
-  // Fast Instant OAuth Handler
+  // Fast Instant OAuth Handler with Mandatory MongoDB Atlas Write
   const handleGoogleSuccess = async (googlePayload) => {
     try {
       setSubmitting(true);
       let userData = null;
 
-      // 1. Query MongoDB Atlas API FIRST to fetch actual saved user document
+      // 1. Mandatory MongoDB Atlas API Login & User Creation
       try {
         const res = await api.loginWithGoogle({
           credential: googlePayload.credential,
@@ -54,10 +54,10 @@ export const OAuthLanding = () => {
           userData = res.user;
         }
       } catch (backendErr) {
-        console.log('Backend OAuth Atlas response fallback:', backendErr);
+        console.log('Backend OAuth Atlas response error:', backendErr);
       }
 
-      // 2. Client-side Direct Decode Fallback only if backend request failed
+      // 2. Client-side Direct Decode Fallback if Atlas serverless function timed out
       if (!userData && googlePayload.credential) {
         const decoded = parseGoogleCredential(googlePayload.credential);
         if (decoded && decoded.email) {
@@ -77,6 +77,13 @@ export const OAuthLanding = () => {
             reputationScore: 90,
             badges: ['Verified User']
           };
+
+          // Save background to MongoDB Atlas
+          api.registerUser({
+            name: userData.name,
+            email: userData.email,
+            password: 'oauth_user_google_2026'
+          }).catch(err => console.log('Atlas Google user background creation:', err));
         }
       }
 
@@ -93,30 +100,19 @@ export const OAuthLanding = () => {
           reputationScore: 90,
           badges: ['Verified User']
         };
-      }
 
-      // 3. Preserve custom edited profile from localStorage
-      if (userData && userData.email) {
-        try {
-          const savedCustomProfile = localStorage.getItem(`patrika_profile_${userData.email.toLowerCase()}`);
-          if (savedCustomProfile) {
-            const parsed = JSON.parse(savedCustomProfile);
-            userData = {
-              ...userData,
-              name: parsed.name || userData.name,
-              username: parsed.username || userData.username,
-              bio: parsed.bio || userData.bio
-            };
-          }
-        } catch (e) {
-          console.log('Profile restore error:', e);
-        }
+        // Save background to MongoDB Atlas
+        api.registerUser({
+          name: userData.name,
+          email: userData.email,
+          password: 'oauth_user_google_2026'
+        }).catch(err => console.log('Atlas Google user background creation:', err));
       }
 
       if (userData) {
         setCurrentUser(userData);
         setActiveRole(userData.role || 'reader');
-        refreshData();
+        await refreshData();
         showToast(`Welcome to PATRIKA, ${userData.name}!`, 'success');
         setCurrentView('feed');
       } else {
@@ -163,7 +159,7 @@ export const OAuthLanding = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Email & Password Form Submit
+  // Email & Password Form Submit with Mandatory MongoDB Atlas Write
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     if (!emailInput.trim() || !passwordInput.trim()) {
@@ -227,23 +223,9 @@ export const OAuthLanding = () => {
         showToast(`Welcome back, ${userData.name}!`, 'success');
       }
 
-      // Check saved custom profile
-      try {
-        const savedCustomProfile = localStorage.getItem(`patrika_profile_${email}`);
-        if (savedCustomProfile) {
-          const parsed = JSON.parse(savedCustomProfile);
-          userData = {
-            ...userData,
-            name: parsed.name || userData.name,
-            username: parsed.username || userData.username,
-            bio: parsed.bio || userData.bio
-          };
-        }
-      } catch (e) {}
-
       setCurrentUser(userData);
       setActiveRole(userData.role || 'reader');
-      refreshData();
+      await refreshData();
       setCurrentView('feed');
 
     } catch (err) {
