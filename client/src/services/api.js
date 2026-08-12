@@ -116,10 +116,32 @@ export const api = {
     return res.json();
   },
 
-  // Users & Real Google OAuth
+  // Users & Auth
   async getUsers() {
     const res = await fetch(`${API_BASE}/auth/users`);
     return res.json();
+  },
+
+  async registerUser(userData) {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    return data;
+  },
+
+  async loginWithEmail(credentials) {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    return data;
   },
 
   async loginWithGoogle(googlePayload) {

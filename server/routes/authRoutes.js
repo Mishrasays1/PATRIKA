@@ -34,6 +34,93 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// POST Register with Email & Password
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    let existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
+    }
+
+    let baseUsername = (name || cleanEmail.split('@')[0])
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_');
+    let finalUsername = baseUsername;
+    let counter = 1;
+    while (await User.findOne({ username: finalUsername })) {
+      finalUsername = `${baseUsername}_${counter}`;
+      counter++;
+    }
+
+    const user = new User({
+      name: name || cleanEmail.split('@')[0],
+      username: finalUsername,
+      email: cleanEmail,
+      role: 'reporter',
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+      bio: 'Verified Citizen Journalist Profile',
+      reputationScore: 90,
+      badges: ['Verified User']
+    });
+
+    await user.save();
+
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
+      { expiresIn: '7d' }
+    );
+
+    res.json({ user, token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Login with Email & Password
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      let baseUsername = cleanEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      user = new User({
+        name: cleanEmail.split('@')[0],
+        username: baseUsername,
+        email: cleanEmail,
+        role: 'reporter',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+        bio: 'Verified Citizen Journalist Profile',
+        reputationScore: 90,
+        badges: ['Verified User']
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
+      { expiresIn: '7d' }
+    );
+
+    res.json({ user, token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST Verify Real Google OAuth 2.0 Credential Token
 router.post('/google', async (req, res) => {
   try {
@@ -68,7 +155,6 @@ router.post('/google', async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Auto-generate initial clean username
       let baseUsername = (googleUser.name || email.split('@')[0])
         .toLowerCase()
         .replace(/[^a-z0-9_]/g, '_');
@@ -101,7 +187,6 @@ router.post('/google', async (req, res) => {
       }
     }
 
-    // Generate Session JWT Token
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
@@ -118,7 +203,7 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// PUT Update User Profile (Username & Role with Uniqueness Check)
+// PUT Update User Profile
 router.put('/profile/:id', async (req, res) => {
   try {
     const { name, username, role, bio } = req.body;
@@ -126,14 +211,13 @@ router.put('/profile/:id', async (req, res) => {
 
     if (username) {
       const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
-      // Check if username is taken by ANOTHER user
       const existing = await User.findOne({ 
         username: cleanUsername, 
         _id: { $ne: userId } 
       });
 
       if (existing) {
-        return res.status(400).json({ error: `@${cleanUsername} is already taken by another user. Please choose a different unique username.` });
+        return res.status(400).json({ error: `@${cleanUsername} is already taken by another user.` });
       }
 
       req.body.username = cleanUsername;
