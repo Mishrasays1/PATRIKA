@@ -18,10 +18,12 @@ import {
   X,
   MapPin,
   FileText,
-  FileCheck
+  FileCheck,
+  Share2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ReportModal } from '../components/ReportModal';
+import { ShareModal } from '../components/ShareModal';
 import { api } from '../services/api';
 
 export const ArticleDetail = () => {
@@ -37,6 +39,7 @@ export const ArticleDetail = () => {
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -216,13 +219,25 @@ export const ArticleDetail = () => {
           <span>Back to News Feed</span>
         </button>
 
-        <button
-          onClick={() => setShowReportModal(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs font-semibold text-rose-300 hover:bg-rose-900/40 transition"
-        >
-          <Flag className="w-4 h-4 text-rose-400" />
-          <span>Flag Story</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Share Button */}
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/50 border border-emerald-800/80 text-xs font-bold text-emerald-300 hover:bg-emerald-900/60 transition shadow"
+          >
+            <Share2 className="w-4 h-4 text-emerald-400" />
+            <span>Share Story</span>
+          </button>
+
+          {/* Flag Button */}
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs font-semibold text-rose-300 hover:bg-rose-900/40 transition"
+          >
+            <Flag className="w-4 h-4 text-rose-400" />
+            <span>Flag Story</span>
+          </button>
+        </div>
       </div>
 
       {/* Article Header */}
@@ -329,6 +344,16 @@ export const ArticleDetail = () => {
       <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
+            
+            {/* Share Button in Action Bar */}
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition border bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-emerald-400"
+            >
+              <Share2 className="w-4 h-4 text-emerald-400" />
+              <span>Share</span>
+            </button>
+
             <button
               onClick={() => handleVote('truth')}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition border ${
@@ -461,6 +486,15 @@ export const ArticleDetail = () => {
           story={story}
           isOpen={showReportModal}
           onClose={() => setShowReportModal(false)}
+        />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          story={story}
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
         />
       )}
     </div>

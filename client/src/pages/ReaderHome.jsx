@@ -22,6 +22,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { ReportModal } from '../components/ReportModal';
+import { ShareModal } from '../components/ShareModal';
 
 export const ReaderHome = () => {
   const { 
@@ -39,6 +40,7 @@ export const ReaderHome = () => {
   } = useApp();
 
   const [selectedStoryForFlag, setSelectedStoryForFlag] = useState(null);
+  const [selectedStoryForShare, setSelectedStoryForShare] = useState(null);
   const [existingReportForUser, setExistingReportForUser] = useState(null);
   const [reportsMap, setReportsMap] = useState({});
   const [expandedFlags, setExpandedFlags] = useState({});
@@ -174,6 +176,12 @@ export const ReaderHome = () => {
 
     setSelectedStoryForFlag(story);
     setExistingReportForUser(myReport || null);
+  };
+
+  // Open Share Modal
+  const handleOpenShareModal = (e, story) => {
+    e.stopPropagation();
+    setSelectedStoryForShare(story);
   };
 
   // Delete Published Story (Author or Admin Power)
@@ -398,6 +406,16 @@ export const ReaderHome = () => {
 
                       <div className="flex items-center gap-2">
                         
+                        {/* SHARE BUTTON */}
+                        <button
+                          onClick={(e) => handleOpenShareModal(e, story)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow border bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-emerald-400"
+                          title="Share Story link across platforms"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Share</span>
+                        </button>
+
                         {/* TRUTH BUTTON */}
                         <button
                           onClick={(e) => handleVote(e, story._id, 'truth')}
@@ -521,6 +539,13 @@ export const ReaderHome = () => {
           setSelectedStoryForFlag(null);
           setExistingReportForUser(null);
         }}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        story={selectedStoryForShare}
+        isOpen={!!selectedStoryForShare}
+        onClose={() => setSelectedStoryForShare(null)}
       />
 
     </div>

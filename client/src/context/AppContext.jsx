@@ -31,6 +31,18 @@ export const AppProvider = ({ children }) => {
       }
     }
   }, [stories]);
+
+  // Deep Link URL Parameter Handler (?story=STORY_ID or ?id=STORY_ID)
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const storyIdFromUrl = urlParams.get('story') || urlParams.get('id');
+      if (storyIdFromUrl) {
+        setSelectedStoryId(storyIdFromUrl);
+        setCurrentView('story');
+      }
+    } catch (e) {}
+  }, []);
   
   // Persist logged-in user profile in state & localStorage
   const [currentUser, setCurrentUser] = useState(() => {
@@ -101,7 +113,6 @@ export const AppProvider = ({ children }) => {
     try {
       const fetchedStories = await api.getStories().catch(() => []);
       if (Array.isArray(fetchedStories) && fetchedStories.length > 0) {
-        // Smart merge: Only update if user is not actively clicking buttons
         if (!isUserInteractingRef.current) {
           setStories(fetchedStories);
         }
@@ -113,7 +124,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Background polling interval (every 8 seconds instead of 3 seconds to prevent race conditions)
+  // Background polling interval (every 8 seconds)
   useEffect(() => {
     refreshData();
     const interval = setInterval(() => {
