@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, User, ArrowRight, Key, AlertTriangle, CheckCircle2, ArrowLeft, KeyRound } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, User, ArrowRight, Key, AlertTriangle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 
@@ -16,14 +16,6 @@ export const AdminLogin = ({ onBackToUserAuth }) => {
   const [passwordInput, setPasswordInput] = useState('');
   const [reasonInput, setReasonInput] = useState('');
   const [devKeyInput, setDevKeyInput] = useState('');
-
-  // Quick Fill Master Admin Credentials Helper
-  const handleQuickFillMasterAdmin = () => {
-    setEmailInput('admin@patrika.org');
-    setPasswordInput('PatrikaAdmin#2026');
-    setDevKeyInput('PATRIKA_DEV_2026');
-    showToast('Master Admin credentials auto-filled!', 'info');
-  };
 
   const handleAdminAuth = async (e) => {
     e.preventDefault();
@@ -111,27 +103,6 @@ export const AdminLogin = ({ onBackToUserAuth }) => {
             </p>
           </div>
 
-          {/* Master Admin Credential Badge */}
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-amber-800/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="font-bold text-amber-400 flex items-center gap-1.5 font-mono">
-                <KeyRound className="w-4 h-4" />
-                <span>Generated Master Admin Credentials</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleQuickFillMasterAdmin}
-                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold transition shadow"
-              >
-                Auto-Fill Master Admin
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300 pt-1">
-              <div>Email: <strong className="text-white">admin@patrika.org</strong></div>
-              <div>Password: <strong className="text-white">PatrikaAdmin#2026</strong></div>
-            </div>
-          </div>
-
           {/* Card */}
           <div className="glass-card p-6 sm:p-8 rounded-3xl border border-amber-900/60 shadow-2xl space-y-6">
             
@@ -204,7 +175,7 @@ export const AdminLogin = ({ onBackToUserAuth }) => {
                     required
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="admin@patrika.org"
+                    placeholder="Enter Admin Email"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-sans"
                   />
                 </div>
@@ -247,8 +218,7 @@ export const AdminLogin = ({ onBackToUserAuth }) => {
               {/* Developer Access Key / Passkey */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-                  <span>Developer Passkey (Optional)</span>
-                  <span className="text-[10px] text-amber-400 font-mono">PATRIKA_DEV_2026</span>
+                  <span>Developer Authorization Key (Optional)</span>
                 </label>
                 <div className="relative">
                   <Key className="w-4 h-4 absolute left-3.5 top-3 text-amber-400" />
@@ -256,7 +226,7 @@ export const AdminLogin = ({ onBackToUserAuth }) => {
                     type="password"
                     value={devKeyInput}
                     onChange={(e) => setDevKeyInput(e.target.value)}
-                    placeholder="Enter Developer Passkey (e.g. PATRIKA_DEV_2026)"
+                    placeholder="Enter Developer Passkey"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
                   />
                 </div>
