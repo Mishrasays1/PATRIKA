@@ -9,6 +9,8 @@ import { ReaderHome } from './pages/ReaderHome';
 import { ArticleDetail } from './pages/ArticleDetail';
 import { SubmitStory } from './pages/SubmitStory';
 import { MediaLiteracy } from './pages/MediaLiteracy';
+import { VerificationDesk } from './pages/VerificationDesk';
+import { ReporterDashboard } from './pages/ReporterDashboard';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const MainContent = () => {
@@ -24,7 +26,7 @@ const MainContent = () => {
     );
   }
 
-  // UNIFIED UI FOR ALL USERS
+  // UNIFIED UI & WORKFLOW ROUTER
   const renderView = () => {
     switch (currentView) {
       case 'submit':
@@ -32,6 +34,12 @@ const MainContent = () => {
 
       case 'story':
         return <ArticleDetail />;
+
+      case 'dashboard':
+        return <ReporterDashboard />;
+
+      case 'verification':
+        return <VerificationDesk />;
 
       case 'literacy':
         return <MediaLiteracy />;

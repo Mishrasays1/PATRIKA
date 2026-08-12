@@ -7,7 +7,9 @@ import {
   Search,
   Settings,
   Menu,
-  X
+  X,
+  LayoutDashboard,
+  CheckSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProfileModal } from './ProfileModal';
@@ -70,8 +72,8 @@ export const Navbar = () => {
             />
           </div>
 
-          {/* CLEAN SIMPLE NAVIGATION FOR EVERYONE */}
-          <nav className="hidden lg:flex items-center gap-2">
+          {/* CITIZEN REPORTER & ADMIN NAVIGATION FLOW TABS */}
+          <nav className="hidden lg:flex items-center gap-1.5">
             
             <button
               onClick={() => navTo('feed')}
@@ -91,6 +93,28 @@ export const Navbar = () => {
             >
               <PenSquare className="w-3.5 h-3.5" />
               <span>Publish Story</span>
+            </button>
+
+            {/* Reporter Flow: Status Tracker */}
+            <button
+              onClick={() => navTo('dashboard')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                currentView === 'dashboard' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-emerald-400" />
+              <span>My Tracker</span>
+            </button>
+
+            {/* Admin Flow: Verification & Review Portal */}
+            <button
+              onClick={() => navTo('verification')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                currentView === 'verification' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5 text-amber-400" />
+              <span>Admin Verification</span>
             </button>
 
           </nav>
@@ -155,6 +179,26 @@ export const Navbar = () => {
               >
                 <PenSquare className="w-4 h-4" />
                 <span>Publish Story</span>
+              </button>
+
+              <button
+                onClick={() => navTo('dashboard')}
+                className={`p-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition ${
+                  currentView === 'dashboard' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-300'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4 text-emerald-400" />
+                <span>My Tracker</span>
+              </button>
+
+              <button
+                onClick={() => navTo('verification')}
+                className={`p-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition ${
+                  currentView === 'verification' ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-300'
+                }`}
+              >
+                <CheckSquare className="w-4 h-4 text-amber-400" />
+                <span>Admin Review</span>
               </button>
             </div>
 
