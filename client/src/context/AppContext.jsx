@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 
 const AppContext = createContext();
@@ -18,6 +18,8 @@ export const AppProvider = ({ children }) => {
     } catch (e) {}
     return [];
   });
+
+  const isUserInteractingRef = useRef(false);
 
   // Save stories to localStorage cache whenever updated
   useEffect(() => {
@@ -72,7 +74,9 @@ export const AppProvider = ({ children }) => {
                 _id: dbUser._id,
                 name: dbUser.name || prev?.name,
                 username: dbUser.username || prev?.username,
-                bio: dbUser.bio || prev?.bio
+                bio: dbUser.bio || prev?.bio,
+                role: dbUser.role || prev?.role,
+                isAdminVerified: dbUser.isAdminVerified || prev?.isAdminVerified
               }));
             }
           }
@@ -90,12 +94,17 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Refresh backend data from MongoDB Atlas (Single Source of Truth)
+  // Refresh backend data safely without clobbering recent local user interactions
   const refreshData = async () => {
+    if (isUserInteractingRef.current) return;
+
     try {
       const fetchedStories = await api.getStories().catch(() => []);
       if (Array.isArray(fetchedStories) && fetchedStories.length > 0) {
-        setStories(fetchedStories);
+        // Smart merge: Only update if user is not actively clicking buttons
+        if (!isUserInteractingRef.current) {
+          setStories(fetchedStories);
+        }
       }
       const fetchedReports = await api.getReports().catch(() => []);
       if (fetchedReports) setReports(fetchedReports);
@@ -104,12 +113,12 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Real-time live polling interval (every 3 seconds) for all connected users
+  // Background polling interval (every 8 seconds instead of 3 seconds to prevent race conditions)
   useEffect(() => {
     refreshData();
     const interval = setInterval(() => {
       refreshData();
-    }, 3000);
+    }, 8000);
     return () => clearInterval(interval);
   }, []);
 
@@ -142,7 +151,8 @@ export const AppProvider = ({ children }) => {
       searchQuery,
       setSearchQuery,
       selectedCategory,
-      setSelectedCategory
+      setSelectedCategory,
+      isUserInteractingRef
     }}>
       {children}
     </AppContext.Provider>

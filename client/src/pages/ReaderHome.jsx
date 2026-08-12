@@ -34,7 +34,8 @@ export const ReaderHome = () => {
     setSelectedCategory,
     setCurrentView,
     showToast,
-    refreshData
+    refreshData,
+    isUserInteractingRef
   } = useApp();
 
   const [selectedStoryForFlag, setSelectedStoryForFlag] = useState(null);
@@ -75,23 +76,23 @@ export const ReaderHome = () => {
     }
   };
 
-  // Real-time live polling for community flag reports & KPI stats (every 3 seconds)
+  // Real-time live polling for community flag reports & KPI stats (every 8 seconds)
   useEffect(() => {
     fetchAllReports();
     fetchKpis();
     const interval = setInterval(() => {
       fetchAllReports();
       fetchKpis();
-    }, 3000);
+    }, 8000);
     return () => clearInterval(interval);
-  }, [stories]);
+  }, []);
 
   const toggleFlagDetails = (e, storyId) => {
     e.stopPropagation();
     setExpandedFlags(prev => ({ ...prev, [storyId]: !prev[storyId] }));
   };
 
-  // Instant Fail-Proof Truth/False Voting Handler
+  // Instant Fail-Proof Truth/False Voting Handler with Lock Protection
   const handleVote = async (e, storyId, voteType) => {
     e.stopPropagation();
     if (!currentUser) {
@@ -100,6 +101,9 @@ export const ReaderHome = () => {
     }
 
     const userId = currentUser._id;
+
+    // Lock background polling overwrite during click
+    if (isUserInteractingRef) isUserInteractingRef.current = true;
 
     // Instantly update story votes & counts state in local UI (0ms delay!)
     setStories(prevStories => {
@@ -144,11 +148,17 @@ export const ReaderHome = () => {
 
     showToast(voteType === 'truth' ? 'Marked as Truth!' : 'Marked as False!', voteType === 'truth' ? 'success' : 'warning');
 
-    // Background sync to MongoDB Atlas API
-    api.voteStory(storyId, userId, voteType).then(() => {
-      refreshData();
-      fetchKpis();
-    }).catch(err => console.log('Background vote sync:', err));
+    // Synchronously send vote to backend before unlocking refresh
+    try {
+      await api.voteStory(storyId, userId, voteType);
+      await fetchKpis();
+    } catch (err) {
+      console.log('Vote sync error:', err);
+    } finally {
+      setTimeout(() => {
+        if (isUserInteractingRef) isUserInteractingRef.current = false;
+      }, 1500);
+    }
   };
 
   // Open Flag Modal
@@ -176,6 +186,7 @@ export const ReaderHome = () => {
 
     if (!window.confirm(confirmMsg)) return;
 
+    if (isUserInteractingRef) isUserInteractingRef.current = true;
     setStories(prev => prev.filter(s => s._id !== storyId));
     showToast('Story deleted successfully from platform.', 'info');
 
@@ -185,6 +196,10 @@ export const ReaderHome = () => {
       await fetchKpis();
     } catch (err) {
       console.log('Story delete background:', err);
+    } finally {
+      setTimeout(() => {
+        if (isUserInteractingRef) isUserInteractingRef.current = false;
+      }, 1500);
     }
   };
 
