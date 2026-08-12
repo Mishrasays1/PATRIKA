@@ -44,8 +44,21 @@ export const OAuthLanding = () => {
       setSubmitting(true);
       let userData = null;
 
-      // 1. Client-side Fast Decode (0ms Instant Load)
-      if (googlePayload.credential) {
+      // 1. Query MongoDB Atlas API FIRST to fetch actual saved user document
+      try {
+        const res = await api.loginWithGoogle({
+          credential: googlePayload.credential,
+          userInfo: googlePayload.userInfo
+        });
+        if (res && res.user) {
+          userData = res.user;
+        }
+      } catch (backendErr) {
+        console.log('Backend OAuth Atlas response fallback:', backendErr);
+      }
+
+      // 2. Client-side Direct Decode Fallback only if backend request failed
+      if (!userData && googlePayload.credential) {
         const decoded = parseGoogleCredential(googlePayload.credential);
         if (decoded && decoded.email) {
           const email = decoded.email.toLowerCase();
@@ -82,7 +95,7 @@ export const OAuthLanding = () => {
         };
       }
 
-      // Preserve custom edited profile from localStorage
+      // 3. Preserve custom edited profile from localStorage
       if (userData && userData.email) {
         try {
           const savedCustomProfile = localStorage.getItem(`patrika_profile_${userData.email.toLowerCase()}`);
@@ -105,12 +118,6 @@ export const OAuthLanding = () => {
         setActiveRole(userData.role || 'reader');
         showToast(`Welcome to PATRIKA, ${userData.name}!`, 'success');
         setCurrentView('feed');
-
-        // Sync MongoDB Atlas in background
-        api.loginWithGoogle({
-          credential: googlePayload.credential,
-          userInfo: googlePayload.userInfo
-        }).catch(err => console.log('Background Atlas OAuth sync:', err));
       } else {
         showToast('Sign in could not be completed.', 'error');
       }
@@ -171,7 +178,7 @@ export const OAuthLanding = () => {
       let userData = null;
 
       if (isRegisterMode) {
-        // Register New Account
+        // Register New Account in MongoDB Atlas
         try {
           const res = await api.registerUser({
             name: nameInput.trim() || email.split('@')[0],
@@ -180,7 +187,6 @@ export const OAuthLanding = () => {
           });
           userData = res.user;
         } catch (err) {
-          // Fallback to local profile creation if offline
           const cleanUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
           userData = {
             _id: `user_${email.replace(/[^a-z0-9]/g, '_')}`,
@@ -196,7 +202,7 @@ export const OAuthLanding = () => {
         }
         showToast('Account registered successfully! Welcome to PATRIKA.', 'success');
       } else {
-        // Login Existing Account
+        // Login Existing Account from MongoDB Atlas
         try {
           const res = await api.loginWithEmail({
             email,

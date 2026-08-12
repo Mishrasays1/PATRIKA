@@ -56,6 +56,32 @@ export const AppProvider = ({ children }) => {
     }
   }, [currentUser]);
 
+  // Fetch actual saved username & profile from MongoDB Atlas on boot or login
+  useEffect(() => {
+    const fetchAtlasProfile = async () => {
+      if (currentUser && currentUser.email) {
+        try {
+          const allUsers = await api.getUsers();
+          if (Array.isArray(allUsers)) {
+            const dbUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === currentUser.email.toLowerCase());
+            if (dbUser && dbUser.username && dbUser.username !== currentUser.username) {
+              setCurrentUser(prev => ({
+                ...prev,
+                _id: dbUser._id,
+                name: dbUser.name || prev.name,
+                username: dbUser.username,
+                bio: dbUser.bio || prev.bio
+              }));
+            }
+          }
+        } catch (err) {
+          console.log('Atlas profile sync background:', err);
+        }
+      }
+    };
+    fetchAtlasProfile();
+  }, [currentUser?.email]);
+
   // Show temporary toast message
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
