@@ -38,14 +38,14 @@ router.get('/users', async (req, res) => {
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    let existingUser = await User.findOne({ email: cleanEmail });
-    if (existingUser) {
-      return res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
+    let user = await User.findOne({ email: cleanEmail });
+    if (user) {
+      return res.json({ user, message: 'Existing account found in MongoDB Atlas.' });
     }
 
     let baseUsername = (name || cleanEmail.split('@')[0])
@@ -58,7 +58,7 @@ router.post('/register', async (req, res) => {
       counter++;
     }
 
-    const user = new User({
+    user = new User({
       name: name || cleanEmail.split('@')[0],
       username: finalUsername,
       email: cleanEmail,
@@ -70,6 +70,7 @@ router.post('/register', async (req, res) => {
     });
 
     await user.save();
+    console.log(`[Atlas Auth] Registered new user to MongoDB: ${user.email} (@${user.username})`);
 
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
@@ -79,6 +80,7 @@ router.post('/register', async (req, res) => {
 
     res.json({ user, token });
   } catch (err) {
+    console.error('Atlas Register error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -86,7 +88,7 @@ router.post('/register', async (req, res) => {
 // POST Login with Email & Password
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: 'Email address is required.' });
     }
@@ -107,6 +109,7 @@ router.post('/login', async (req, res) => {
         badges: ['Verified User']
       });
       await user.save();
+      console.log(`[Atlas Auth] Created user on login: ${user.email} (@${user.username})`);
     }
 
     const token = jwt.sign(
@@ -117,6 +120,7 @@ router.post('/login', async (req, res) => {
 
     res.json({ user, token });
   } catch (err) {
+    console.error('Atlas Login error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -151,7 +155,7 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ error: 'Invalid Google OAuth credential token' });
     }
 
-    const email = googleUser.email.toLowerCase();
+    const email = googleUser.email.toLowerCase().trim();
     let user = await User.findOne({ email });
 
     if (!user) {
@@ -177,6 +181,7 @@ router.post('/google', async (req, res) => {
         badges: ['Verified User', 'Fact Checker']
       });
       await user.save();
+      console.log(`[Atlas OAuth] SAVED NEW GOOGLE OAUTH USER TO MONGODB ATLAS: ${user.email} (@${user.username})`);
     } else {
       if (!user.username) {
         let baseUsername = (user.name || user.email.split('@')[0])
@@ -199,6 +204,7 @@ router.post('/google', async (req, res) => {
       provider: 'google'
     });
   } catch (err) {
+    console.error('Atlas Google OAuth error:', err);
     res.status(500).json({ error: err.message });
   }
 });

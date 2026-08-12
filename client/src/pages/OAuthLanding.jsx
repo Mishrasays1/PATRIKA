@@ -38,7 +38,7 @@ export const OAuthLanding = () => {
   const googleBtnRef = useRef(null);
   const handleSuccessRef = useRef(null);
 
-  // Fast Instant OAuth Handler with Mandatory MongoDB Atlas Write
+  // Fast Instant OAuth Handler with Guaranteed MongoDB Atlas User Save
   const handleGoogleSuccess = async (googlePayload) => {
     try {
       setSubmitting(true);
@@ -57,56 +57,40 @@ export const OAuthLanding = () => {
         console.log('Backend OAuth Atlas response error:', backendErr);
       }
 
-      // 2. Client-side Direct Decode Fallback if Atlas serverless function timed out
-      if (!userData && googlePayload.credential) {
-        const decoded = parseGoogleCredential(googlePayload.credential);
-        if (decoded && decoded.email) {
-          const email = decoded.email.toLowerCase();
-          const cleanUsername = (decoded.name || email.split('@')[0])
-            .toLowerCase()
-            .replace(/[^a-z0-9_]/g, '_');
+      // 2. Decode credentials if backend response was delayed
+      if (!userData) {
+        let extractedEmail = '';
+        let extractedName = '';
+        let extractedAvatar = '';
 
-          userData = {
-            _id: decoded.sub || `user_${email.replace(/[^a-z0-9]/g, '_')}`,
-            name: decoded.name || email.split('@')[0],
-            username: cleanUsername,
-            email: email,
-            role: 'reporter',
-            avatar: decoded.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-            bio: 'Verified Citizen Journalist Profile',
-            reputationScore: 90,
-            badges: ['Verified User']
-          };
-
-          // Save background to MongoDB Atlas
-          api.registerUser({
-            name: userData.name,
-            email: userData.email,
-            password: 'oauth_user_google_2026'
-          }).catch(err => console.log('Atlas Google user background creation:', err));
+        if (googlePayload.credential) {
+          const decoded = parseGoogleCredential(googlePayload.credential);
+          if (decoded && decoded.email) {
+            extractedEmail = decoded.email.toLowerCase();
+            extractedName = decoded.name || extractedEmail.split('@')[0];
+            extractedAvatar = decoded.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(extractedEmail)}`;
+          }
+        } else if (googlePayload.userInfo) {
+          extractedEmail = googlePayload.userInfo.email.toLowerCase();
+          extractedName = googlePayload.userInfo.name || extractedEmail.split('@')[0];
+          extractedAvatar = googlePayload.userInfo.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(extractedEmail)}`;
         }
-      }
 
-      if (!userData && googlePayload.userInfo) {
-        const email = googlePayload.userInfo.email.toLowerCase();
-        userData = {
-          _id: `user_${email.replace(/[^a-z0-9]/g, '_')}`,
-          name: googlePayload.userInfo.name || email.split('@')[0],
-          username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_'),
-          email: email,
-          role: 'reporter',
-          avatar: googlePayload.userInfo.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-          bio: 'Verified Citizen Journalist Profile',
-          reputationScore: 90,
-          badges: ['Verified User']
-        };
-
-        // Save background to MongoDB Atlas
-        api.registerUser({
-          name: userData.name,
-          email: userData.email,
-          password: 'oauth_user_google_2026'
-        }).catch(err => console.log('Atlas Google user background creation:', err));
+        if (extractedEmail) {
+          // Register/Login user directly to MongoDB Atlas!
+          try {
+            const regRes = await api.registerUser({
+              name: extractedName,
+              email: extractedEmail,
+              password: 'oauth_user_google_2026'
+            });
+            if (regRes && regRes.user) {
+              userData = regRes.user;
+            }
+          } catch (regErr) {
+            console.log('Atlas fallback user create:', regErr);
+          }
+        }
       }
 
       if (userData) {
@@ -171,63 +155,31 @@ export const OAuthLanding = () => {
 
     try {
       setSubmitting(true);
-
       let userData = null;
 
       if (isRegisterMode) {
-        // Register New Account in MongoDB Atlas
-        try {
-          const res = await api.registerUser({
-            name: nameInput.trim() || email.split('@')[0],
-            email,
-            password: passwordInput
-          });
-          userData = res.user;
-        } catch (err) {
-          const cleanUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
-          userData = {
-            _id: `user_${email.replace(/[^a-z0-9]/g, '_')}`,
-            name: nameInput.trim() || email.split('@')[0],
-            username: cleanUsername,
-            email: email,
-            role: 'reporter',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-            bio: 'Verified Citizen Journalist Profile',
-            reputationScore: 90,
-            badges: ['Verified User']
-          };
-        }
+        const res = await api.registerUser({
+          name: nameInput.trim() || email.split('@')[0],
+          email,
+          password: passwordInput
+        });
+        userData = res.user;
         showToast('Account registered successfully! Welcome to PATRIKA.', 'success');
       } else {
-        // Login Existing Account from MongoDB Atlas
-        try {
-          const res = await api.loginWithEmail({
-            email,
-            password: passwordInput
-          });
-          userData = res.user;
-        } catch (err) {
-          const cleanUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
-          userData = {
-            _id: `user_${email.replace(/[^a-z0-9]/g, '_')}`,
-            name: email.split('@')[0],
-            username: cleanUsername,
-            email: email,
-            role: 'reporter',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-            bio: 'Verified Citizen Journalist Profile',
-            reputationScore: 90,
-            badges: ['Verified User']
-          };
-        }
+        const res = await api.loginWithEmail({
+          email,
+          password: passwordInput
+        });
+        userData = res.user;
         showToast(`Welcome back, ${userData.name}!`, 'success');
       }
 
-      setCurrentUser(userData);
-      setActiveRole(userData.role || 'reader');
-      await refreshData();
-      setCurrentView('feed');
-
+      if (userData) {
+        setCurrentUser(userData);
+        setActiveRole(userData.role || 'reader');
+        await refreshData();
+        setCurrentView('feed');
+      }
     } catch (err) {
       showToast('Authentication failed: ' + err.message, 'error');
     } finally {
