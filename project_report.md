@@ -16,7 +16,99 @@ By combining **crowdsourced community validation** (Truth/False voting), **stric
 
 ---
 
-## 2. Problem Statement & Core Objectives
+## 2. System Architecture & Component Hierarchy
+
+### 2.1 High-Level Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph Client_Layer["Frontend Client (React 18 + Vite + Tailwind CSS)"]
+        UI["UI Router (App.jsx)"]
+        CTX["Global AppContext & State Manager"]
+        
+        VIEWS["Page Views"]
+        VIEW_FEED["ReaderHome.jsx (Verified Stream)"]
+        VIEW_SUBMIT["SubmitStory.jsx (Publisher Workspace)"]
+        VIEW_DESK["VerificationDesk.jsx (Admin Workbench)"]
+        VIEW_TRACKER["ReporterDashboard.jsx (My Tracker)"]
+        VIEW_DETAIL["ArticleDetail.jsx (Story Detail View)"]
+        VIEW_ADMIN_LOGIN["AdminLogin.jsx (Dedicated Admin Portal)"]
+        VIEW_LANDING["OAuthLanding.jsx (Sign In / Register)"]
+        
+        COMPONENTS["Modal & Nav Components"]
+        COMP_NAV["Navbar.jsx"]
+        COMP_SHARE["ShareModal.jsx (Multi-Platform Share)"]
+        COMP_REPORT["ReportModal.jsx (Misinformation Flag)"]
+        
+        UI --> CTX
+        CTX --> VIEWS
+        VIEWS --> VIEW_FEED
+        VIEWS --> VIEW_SUBMIT
+        VIEWS --> VIEW_DESK
+        VIEWS --> VIEW_TRACKER
+        VIEWS --> VIEW_DETAIL
+        VIEWS --> VIEW_ADMIN_LOGIN
+        VIEWS --> VIEW_LANDING
+        
+        VIEW_FEED --> COMP_SHARE
+        VIEW_FEED --> COMP_REPORT
+        VIEW_DETAIL --> COMP_SHARE
+        VIEW_DETAIL --> COMP_REPORT
+    end
+
+    subgraph API_Layer["Backend API Server (Node.js + Express.js)"]
+        EXPRESS["Express Server (server/index.js)"]
+        AUTH_R["Auth & Admin Routes (/api/auth)"]
+        STORY_R["Story & Vote Routes (/api/stories)"]
+        REPORT_R["Report Flag Routes (/api/reports)"]
+        STATS_R["KPI Analytics Routes (/api/stats)"]
+        
+        EXPRESS --> AUTH_R
+        EXPRESS --> STORY_R
+        EXPRESS --> REPORT_R
+        EXPRESS --> STATS_R
+    end
+
+    subgraph Database_Layer["Database Tier (MongoDB Atlas Cloud Cluster)"]
+        MONGO[("MongoDB Atlas Cloud Database")]
+        M_USER["User Collection"]
+        M_STORY["Story Collection"]
+        M_REPORT["Report Collection"]
+        
+        MONGO --- M_USER
+        MONGO --- M_STORY
+        MONGO --- M_REPORT
+    end
+
+    CTX <-->|REST API Fetch / JSON| EXPRESS
+    AUTH_R <-->|Mongoose ORM| M_USER
+    STORY_R <-->|Mongoose ORM| M_STORY
+    REPORT_R <-->|Mongoose ORM| M_REPORT
+    STATS_R <-->|Mongoose Aggregation| MONGO
+```
+
+---
+
+### 2.2 System Layer Breakdown
+
+1. **Presentation & UI Layer (React 18 + Vite)**:
+   - Built with component-driven architecture using Lucide Icons and Tailwind CSS for glassmorphism styling.
+   - Real-time client-side routing controlled by `currentView` in `AppContext.jsx`.
+
+2. **Application & State Layer (`AppContext.jsx`)**:
+   - Manages global state (`currentUser`, `stories`, `reports`, `stats`, `selectedCategory`, `searchQuery`).
+   - Implements **`isUserInteractingRef`** lock protection to prevent high-frequency polling from overwriting active user button clicks.
+
+3. **Backend API Layer (Express.js + Node.js)**:
+   - Modularized RESTful endpoints handling JWT authentication, Google OAuth 2.0 verification, story lifecycle management, community voting, and Admin candidate approvals.
+
+4. **Persistence & Data Tier (MongoDB Atlas Cloud Cluster)**:
+   - Hosted on MongoDB Atlas (`cluster0.tfjeynj.mongodb.net/patrika`).
+   - Encapsulated by Mongoose schemas with indexed user handles and populated document references (`Story.reporter -> User`).
+
+---
+
+## 3. Problem Statement & Core Objectives
 
 ### The Problem
 Traditional news outlets often miss hyper-local, ground-level stories, while open social media platforms frequently amplify unverified rumors, deepfakes, and misinformation due to a lack of structured verification workflows and community accountability mechanisms.
@@ -29,7 +121,7 @@ Traditional news outlets often miss hyper-local, ground-level stories, while ope
 
 ---
 
-## 3. Core Workflows & User Roles
+## 4. Core Workflows & User Roles
 
 ```mermaid
 flowchart TD
@@ -67,7 +159,7 @@ flowchart TD
 
 ---
 
-## 4. Data Requirements & Schemas
+## 5. Data Requirements & Schemas
 
 ### 1. User Data Schema (`server/models/User.js`)
 | Field Name | Type | Description |
@@ -113,7 +205,7 @@ flowchart TD
 
 ---
 
-## 5. Key Performance Indicators (KPIs)
+## 6. Key Performance Indicators (KPIs)
 
 PATRIKA calculates and displays 5 live KPIs on the main news dashboard (`server/routes/statsRoutes.js`):
 
@@ -132,18 +224,13 @@ PATRIKA calculates and displays 5 live KPIs on the main news dashboard (`server/
 
 ---
 
-## 6. Key System Architecture & Engineering Highlights
+## 7. Key System Engineering Highlights
 
-### 1. Unified MERN Stack Architecture
-- **Frontend**: Single Page Application (SPA) built with React 18, Vite, and Tailwind CSS.
-- **Backend API**: Node.js & Express RESTful API server.
-- **Database**: MongoDB Atlas cloud database with Mongoose ORM models.
-
-### 2. Real-time Fail-Proof 0ms Optimistic UI & Locking Mechanics
+### 1. Real-time Fail-Proof 0ms Optimistic UI & Locking Mechanics
 - **Problem Solved**: High-frequency background data synchronization caused UI button state reversions during rapid clicking.
 - **Solution**: Implemented `isUserInteractingRef` lock protection in `AppContext.jsx`. When a user clicks **Truth**, **False**, **Approve**, or **Delete**, background polling is locked for 1.5 seconds, guaranteeing 0ms optimistic UI rendering without server overwrites.
 
-### 3. Multi-Platform Sharing & Deep-Linking System
+### 2. Multi-Platform Sharing & Deep-Linking System
 - Integrated `ShareModal.jsx` enabling 1-click sharing across:
   - 📋 **Direct Link Copy** (with instant clipboard feedback)
   - 💬 **WhatsApp**
@@ -155,7 +242,7 @@ PATRIKA calculates and displays 5 live KPIs on the main news dashboard (`server/
 
 ---
 
-## 7. RESTful API Reference
+## 8. RESTful API Reference
 
 ### Story Management (`/api/stories`)
 - `GET /api/stories`: Fetch all stories (filterable by category, status, search)
@@ -177,7 +264,7 @@ PATRIKA calculates and displays 5 live KPIs on the main news dashboard (`server/
 
 ---
 
-## 8. Deployment & Environment Configuration
+## 9. Deployment & Environment Configuration
 
 ### Vercel Deployment Settings
 - **Frontend Build Command**: `npm run build`
@@ -191,10 +278,11 @@ PATRIKA calculates and displays 5 live KPIs on the main news dashboard (`server/
 
 ---
 
-## 9. Verification & Summary
+## 10. Verification & Summary
 
 | Module / Requirement | Status | Verification Note |
 | :--- | :--- | :--- |
+| **System Architecture Diagram** | ✅ Completed | Component hierarchy & database layers documented |
 | **Citizen Reporter Workflow** | ✅ Completed | Submission, photo upload, tracking dashboard active |
 | **Verification & Admin Flow** | ✅ Completed | 3-button review desk (Approve/Edit/Reject) working |
 | **Restricted Admin Security** | ✅ Completed | Master Admin seed & Admin Candidate Approval system live |
