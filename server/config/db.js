@@ -6,7 +6,11 @@ const connectDB = async () => {
 
     if (mongoUri) {
       console.log('Connecting to MongoDB Atlas Cluster...');
-      const conn = await mongoose.connect(mongoUri);
+      const conn = await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        tls: true,
+        tlsAllowInvalidCertificates: true
+      });
       console.log(`Connected to MongoDB Atlas Host: ${conn.connection.host}`);
       return conn;
     }

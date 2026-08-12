@@ -62,8 +62,11 @@ export const ReaderHome = () => {
     }
   };
 
+  // Real-time live polling for community flag reports (every 3 seconds)
   useEffect(() => {
     fetchAllReports();
+    const interval = setInterval(fetchAllReports, 3000);
+    return () => clearInterval(interval);
   }, [stories]);
 
   const toggleFlagDetails = (e, storyId) => {
@@ -88,8 +91,8 @@ export const ReaderHome = () => {
 
         const currentVotes = Array.isArray(story.votes) ? [...story.votes] : [];
         const existingVoteIndex = currentVotes.findIndex(v => String(v.userId) === String(userId));
-        let newUpvotes = story.upvotes || 0;
-        let newDownvotes = story.downvotes || 0;
+        let newUpvotes = Number(story.upvotes || 0);
+        let newDownvotes = Number(story.downvotes || 0);
 
         if (existingVoteIndex >= 0) {
           const oldVote = currentVotes[existingVoteIndex].voteType;

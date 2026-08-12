@@ -62,29 +62,36 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Refresh backend data asynchronously & merge with local stories
+  // Refresh backend data & update live Truth/False counts in real-time
   const refreshData = async () => {
     try {
       const fetchedStories = await api.getStories().catch(() => []);
       if (fetchedStories && fetchedStories.length > 0) {
         setStories(prev => {
           const map = new Map();
-          // Keep current local stories first
-          prev.forEach(s => map.set(s._id || s.id, s));
-          // Merge fetched stories from database
+          // Update live story upvotes, downvotes, and votes from MongoDB Atlas
           fetchedStories.forEach(s => map.set(s._id || s.id, s));
+          // Preserve local pending stories
+          prev.forEach(s => {
+            if (!map.has(s._id || s.id)) map.set(s._id || s.id, s);
+          });
           return Array.from(map.values());
         });
       }
       const fetchedReports = await api.getReports().catch(() => []);
       if (fetchedReports) setReports(fetchedReports);
     } catch (err) {
-      console.error('Data sync:', err);
+      console.error('Real-time data sync:', err);
     }
   };
 
+  // Real-time live polling interval (every 3 seconds) for all connected users
   useEffect(() => {
     refreshData();
+    const interval = setInterval(() => {
+      refreshData();
+    }, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Open story detail view
