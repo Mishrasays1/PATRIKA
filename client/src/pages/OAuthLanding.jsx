@@ -23,7 +23,7 @@ const parseGoogleCredential = (token) => {
 };
 
 export const OAuthLanding = () => {
-  const { setCurrentUser, setActiveRole, setCurrentView, showToast } = useApp();
+  const { setCurrentUser, setActiveRole, setCurrentView, showToast, refreshData } = useApp();
 
   // Mode: 'login' | 'register'
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -116,6 +116,7 @@ export const OAuthLanding = () => {
       if (userData) {
         setCurrentUser(userData);
         setActiveRole(userData.role || 'reader');
+        refreshData();
         showToast(`Welcome to PATRIKA, ${userData.name}!`, 'success');
         setCurrentView('feed');
       } else {
@@ -242,6 +243,7 @@ export const OAuthLanding = () => {
 
       setCurrentUser(userData);
       setActiveRole(userData.role || 'reader');
+      refreshData();
       setCurrentView('feed');
 
     } catch (err) {

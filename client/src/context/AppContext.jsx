@@ -3,18 +3,52 @@ import { api } from '../services/api';
 
 const AppContext = createContext();
 
+// High Quality Initial Seed Stories for Instant 0ms Load on New Accounts
+const DEFAULT_SEED_STORIES = [
+  {
+    _id: 'story_seed_1',
+    title: 'Severe Water Contamination Reported in North District Sector 4',
+    summary: 'Local residents report discolored tap water smelling of chemicals. Municipal testing underway after community reports.',
+    content: 'Multiple households across Sector 4 reported heavy sedimentation and chemical odor in municipal tap water starting Monday morning. Independent water test kits showed elevated TDS levels exceeding 450 ppm. Ground authorities have dispatched emergency water tankers.',
+    category: 'Health & Sanitation',
+    media: [{ url: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600', type: 'image' }],
+    upvotes: 14,
+    downvotes: 1,
+    votes: [],
+    flagsCount: 0,
+    reporter: { name: 'Vikram Sharma', username: 'vikram_sharma' },
+    createdAt: new Date(Date.now() - 3600000 * 4).toISOString()
+  },
+  {
+    _id: 'story_seed_2',
+    title: 'Unannounced Road Construction Blocking Emergency Ambulance Route',
+    summary: 'Civic contractors started heavy excavation without warning signage near City General Hospital gate.',
+    content: 'Civic excavation near the main emergency gate of City General Hospital caused a 40-minute gridlock for inbound ambulances today. Local traffic police were unnotified prior to road closure. Citizen journalists captured ground evidence.',
+    category: 'Civic Infrastructure',
+    media: [{ url: 'https://images.unsplash.com/photo-1517649763962-0c623266010b?w=600', type: 'image' }],
+    upvotes: 28,
+    downvotes: 0,
+    votes: [],
+    flagsCount: 0,
+    reporter: { name: 'Priya Verma', username: 'priya_v' },
+    createdAt: new Date(Date.now() - 3600000 * 12).toISOString()
+  }
+];
+
 export const AppProvider = ({ children }) => {
   const [currentView, setCurrentView] = useState('feed');
   const [selectedStoryId, setSelectedStoryId] = useState(null);
   
-  // Persist published stories in state & localStorage
+  // Persist published stories in state & localStorage (Instant 0ms initial load)
   const [stories, setStories] = useState(() => {
     try {
       const saved = localStorage.getItem('patrika_stories');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_SEED_STORIES;
   });
 
   // Save stories to localStorage whenever updated
@@ -88,14 +122,14 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Refresh backend data & update live Truth/False counts in real-time
+  // Refresh backend data & update live stories instantly
   const refreshData = async () => {
     try {
       const fetchedStories = await api.getStories().catch(() => []);
       if (fetchedStories && fetchedStories.length > 0) {
         setStories(prev => {
           const map = new Map();
-          // Update live story upvotes, downvotes, and votes from MongoDB Atlas
+          // Primary: MongoDB Atlas Stories
           fetchedStories.forEach(s => map.set(s._id || s.id, s));
           // Preserve local pending stories
           prev.forEach(s => {
