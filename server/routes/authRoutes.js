@@ -79,6 +79,49 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// GET all pending admin access requests for Main Admin review
+router.get('/admin/requests', async (req, res) => {
+  try {
+    const requests = await User.find({ adminApprovalStatus: 'pending' }).sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Main Admin decision on pending Admin Access Request (Approve or Reject)
+router.post('/admin/decide-request', async (req, res) => {
+  try {
+    const { targetUserId, action } = req.body;
+    if (!targetUserId || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Target user ID and valid action (approve/reject) are required.' });
+    }
+
+    const user = await User.findById(targetUserId);
+    if (!user) return res.status(404).json({ error: 'Target candidate user not found.' });
+
+    if (action === 'approve') {
+      user.role = 'admin';
+      user.adminApprovalStatus = 'approved';
+      user.isAdminVerified = true;
+      if (!user.badges.includes('Verified Admin')) {
+        user.badges.push('Verified Admin');
+      }
+      user.bio = 'Verified Admin & Fact Checker';
+      await user.save();
+      return res.json({ message: `Approved ${user.name} as Verified Admin with full platform powers!`, user });
+    } else {
+      user.role = 'reporter';
+      user.adminApprovalStatus = 'rejected';
+      user.isAdminVerified = false;
+      await user.save();
+      return res.json({ message: `Rejected Admin Access Request for ${user.name}.`, user });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST Register with Email & Password
 router.post('/register', async (req, res) => {
   try {
@@ -250,8 +293,11 @@ router.post('/admin/login', async (req, res) => {
 
     // Check Master Admin Credentials
     if (cleanEmail === MASTER_ADMIN_EMAIL && password === MASTER_ADMIN_PASSWORD) {
-      await ensureMasterAdminAndResetOthers();
       let masterUser = await User.findOne({ email: MASTER_ADMIN_EMAIL });
+      if (!masterUser) {
+        await ensureMasterAdminAndResetOthers();
+        masterUser = await User.findOne({ email: MASTER_ADMIN_EMAIL });
+      }
       const token = jwt.sign(
         { userId: masterUser._id, email: masterUser.email, role: 'admin' },
         process.env.JWT_SECRET || 'patrika_jwt_secret_2026',

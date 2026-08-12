@@ -186,6 +186,24 @@ export const api = {
     return data;
   },
 
+  async getAdminRequests() {
+    const res = await fetch(`${API_BASE}/auth/admin/requests`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch admin requests');
+    return data;
+  },
+
+  async decideAdminRequest(targetUserId, action) {
+    const res = await fetch(`${API_BASE}/auth/admin/decide-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId, action }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to decide admin request');
+    return data;
+  },
+
   async approveAdminCandidate(targetUserId, developerPasskey) {
     const res = await fetch(`${API_BASE}/auth/admin/approve-user`, {
       method: 'POST',
