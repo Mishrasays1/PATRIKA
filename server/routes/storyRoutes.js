@@ -57,6 +57,27 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// PUT update story verification status (approve / reject / request_edits)
+router.put('/:id/status', async (req, res) => {
+  try {
+    const { status, reviewerNotes } = req.body;
+    if (!['approved', 'rejected', 'edits_requested', 'pending'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status value' });
+    }
+
+    const story = await Story.findById(req.params.id);
+    if (!story) return res.status(404).json({ error: 'Story not found' });
+
+    story.status = status;
+    if (reviewerNotes !== undefined) story.reviewerNotes = reviewerNotes;
+
+    await story.save();
+    res.json({ message: `Story status updated to ${status}`, story });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST create story with Location & Reviewer Comments
 router.post('/', async (req, res) => {
   try {

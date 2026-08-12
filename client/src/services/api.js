@@ -25,6 +25,26 @@ export const api = {
     return res.json();
   },
 
+  async updateStoryStatus(storyId, status, reviewerNotes = '') {
+    const res = await fetch(`${API_BASE}/stories/${storyId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, reviewerNotes }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update story status');
+    return data;
+  },
+
+  async decideVerification(payload) {
+    const storyId = payload.storyId;
+    let status = 'approved';
+    if (payload.action === 'reject') status = 'rejected';
+    if (payload.action === 'request_edits') status = 'edits_requested';
+
+    return this.updateStoryStatus(storyId, status, payload.notes || '');
+  },
+
   async deleteStory(id) {
     const res = await fetch(`${API_BASE}/stories/${id}`, {
       method: 'DELETE'
