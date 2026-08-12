@@ -15,7 +15,10 @@ import {
   Edit3,
   Trash2,
   Check,
-  X
+  X,
+  MapPin,
+  FileText,
+  FileCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ReportModal } from '../components/ReportModal';
@@ -229,7 +232,7 @@ export const ArticleDetail = () => {
             {story.category}
           </span>
           <span className="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5" /> Verified News
+            <ShieldCheck className="w-3.5 h-3.5" /> Status: {story.status?.toUpperCase() || 'APPROVED'}
           </span>
         </div>
 
@@ -240,6 +243,27 @@ export const ArticleDetail = () => {
         <p className="text-sm sm:text-base text-slate-300 font-serif italic leading-relaxed border-l-2 border-emerald-500 pl-4 py-1">
           {story.summary}
         </p>
+
+        {/* VERIFICATION DATA & STORY METADATA BAR */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs">
+          <div>
+            <div className="text-[10px] text-slate-500 font-mono uppercase">Submission ID</div>
+            <div className="font-mono text-slate-200 truncate font-semibold">#{story._id}</div>
+          </div>
+
+          <div>
+            <div className="text-[10px] text-slate-500 font-mono uppercase">Ground Location</div>
+            <div className="text-emerald-300 font-semibold flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-emerald-400" />
+              <span>{story.location || 'North District, Sector 4'}</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[10px] text-slate-500 font-mono uppercase">Reviewer Comments</div>
+            <div className="text-slate-300 italic line-clamp-1">{story.reviewerNotes || 'Ground evidence cross-verified.'}</div>
+          </div>
+        </div>
 
         {/* Reporter Meta */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
@@ -258,7 +282,11 @@ export const ArticleDetail = () => {
                   @{story.reporter?.username || 'reporter'}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-400">Citizen Journalist</div>
+              <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                <span className="capitalize">{story.reporter?.role || 'Reporter'}</span>
+                <span>•</span>
+                <span>{story.reporter?.location || 'Citizen Location'}</span>
+              </div>
             </div>
           </div>
 

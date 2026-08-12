@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
     enum: ['reporter', 'moderator', 'admin', 'reader'], 
     default: 'reporter' 
   },
+  location: { type: String, default: 'Ground Reporter Location' },
   avatar: { type: String, default: '' },
   bio: { type: String, default: 'Verified Citizen Journalist Profile' },
   reputationScore: { type: Number, default: 85 },

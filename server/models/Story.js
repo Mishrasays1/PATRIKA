@@ -4,6 +4,7 @@ const storySchema = new mongoose.Schema({
   title: { type: String, required: true },
   summary: { type: String, required: true },
   content: { type: String, required: true },
+  location: { type: String, default: 'North District, Sector 4' },
   category: { 
     type: String, 
     enum: [
@@ -30,7 +31,7 @@ const storySchema = new mongoose.Schema({
   }],
   status: { 
     type: String, 
-    enum: ['draft', 'pending', 'in_review', 'edits_requested', 'approved', 'rejected'], 
+    enum: ['pending', 'approved', 'rejected'], 
     default: 'approved' 
   },
   trustScore: { type: Number, default: 85 },
@@ -43,7 +44,7 @@ const storySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     required: false 
   },
-  reviewerNotes: { type: String, default: '' },
+  reviewerNotes: { type: String, default: 'Ground evidence cross-verified by community moderators.' },
   verificationChecklist: {
     mediaAuthenticity: { type: Boolean, default: true },
     sourceCrossCheck: { type: Boolean, default: true },

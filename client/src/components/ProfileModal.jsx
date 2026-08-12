@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, CheckCircle2, Award, X, AtSign, Save, AlertTriangle } from 'lucide-react';
+import { User, Shield, CheckCircle2, Award, X, AtSign, Save, AlertTriangle, MapPin, UserCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 
@@ -13,6 +13,8 @@ export const ProfileModal = ({ isOpen, onClose }) => {
     currentUser?.username || (currentUser?.email ? currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_') : 'user')
   );
   const [bio, setBio] = useState(currentUser?.bio || 'Verified Citizen Journalist Profile');
+  const [location, setLocation] = useState(currentUser?.location || 'New Delhi, IN');
+  const [role, setRole] = useState(currentUser?.role || 'reporter');
   const [existingUsers, setExistingUsers] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -22,6 +24,8 @@ export const ProfileModal = ({ isOpen, onClose }) => {
       setName(currentUser.name || '');
       setUsername(currentUser.username || (currentUser.email ? currentUser.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_') : 'user'));
       setBio(currentUser.bio || 'Verified Citizen Journalist Profile');
+      setLocation(currentUser.location || 'New Delhi, IN');
+      setRole(currentUser.role || 'reporter');
     }
   }, [currentUser, isOpen]);
 
@@ -64,7 +68,9 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         ...currentUser,
         name: name || currentUser.name || 'Citizen Reporter',
         username: cleanHandle,
-        bio: bio || currentUser.bio
+        bio: bio || currentUser.bio,
+        location: location || 'Ground Reporter Location',
+        role: role || 'reporter'
       };
 
       // 1. Save permanently in persistent storage for this email
@@ -86,7 +92,9 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         api.updateProfile(currentUser._id, {
           name: name || currentUser.name,
           username: cleanHandle,
-          bio
+          bio,
+          location,
+          role
         }).then(res => {
           if (res && res._id) setCurrentUser(res);
         }).catch(err => {
@@ -116,7 +124,12 @@ export const ProfileModal = ({ isOpen, onClose }) => {
             />
             <div>
               <h2 className="text-lg font-bold text-white font-serif">{currentUser.name || 'Citizen Reporter'}</h2>
-              <div className="text-xs text-slate-400 font-mono">@{currentUser.username || 'username'}</div>
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
+                <span>@{currentUser.username || 'username'}</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-semibold uppercase">
+                  {role}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -157,22 +170,52 @@ export const ProfileModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/* 2. Full Name */}
-          <div>
-            <label className="block text-slate-300 font-semibold mb-1">Display Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
-            />
+          {/* 2. Full Name & Role Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">Display Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">User Role</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-emerald-500 capitalize"
+              >
+                <option value="reporter">Reporter (Citizen Journalist)</option>
+                <option value="reader">Reader (Community Member)</option>
+                <option value="admin">Admin (Fact Check Lead)</option>
+              </select>
+            </div>
           </div>
 
-          {/* 3. Bio */}
+          {/* 3. Location */}
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Location</label>
+            <div className="relative">
+              <MapPin className="w-4 h-4 absolute left-3 top-3 text-emerald-400 pointer-events-none" />
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. New Delhi, IN"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-slate-100 text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* 4. Bio */}
           <div>
             <label className="block text-slate-300 font-semibold mb-1">Bio</label>
             <textarea
-              rows={3}
+              rows={2}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-emerald-500"

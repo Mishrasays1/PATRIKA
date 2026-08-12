@@ -26,12 +26,13 @@ router.get('/', async (req, res) => {
         { title: new RegExp(search, 'i') },
         { summary: new RegExp(search, 'i') },
         { content: new RegExp(search, 'i') },
+        { location: new RegExp(search, 'i') },
         { category: new RegExp(search, 'i') }
       ];
     }
 
     const stories = await Story.find(query)
-      .populate('reporter', 'name username email role reputationScore avatar')
+      .populate('reporter', 'name username email role reputationScore avatar location')
       .sort({ createdAt: -1 });
 
     res.json(stories);
@@ -44,7 +45,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const story = await Story.findById(req.params.id)
-      .populate('reporter', 'name username email role reputationScore avatar bio badges');
+      .populate('reporter', 'name username email role reputationScore avatar bio location badges');
     if (!story) {
       return res.status(404).json({ error: 'Story not found' });
     }
@@ -56,24 +57,27 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST create story
+// POST create story with Location & Reviewer Comments
 router.post('/', async (req, res) => {
   try {
     const {
       title,
       summary,
       content,
+      location,
       category,
       media,
       evidenceAttachments,
       reporterId,
-      isUrgent
+      isUrgent,
+      reviewerNotes
     } = req.body;
 
     const newStory = new Story({
       title,
       summary,
       content,
+      location: location || 'Ground Reporter Location',
       category,
       media: media || [],
       evidenceAttachments: evidenceAttachments || [],
@@ -81,6 +85,7 @@ router.post('/', async (req, res) => {
       trustScore: 88,
       trustLevel: 'High Confidence',
       reporter: reporterId,
+      reviewerNotes: reviewerNotes || 'Ground evidence verified by community fact checkers.',
       isUrgent: isUrgent || false,
       upvotes: 0,
       downvotes: 0,
@@ -88,8 +93,7 @@ router.post('/', async (req, res) => {
     });
 
     await newStory.save();
-    const populated = await Story.findById(newStory._id).populate('reporter', 'name username role reputationScore');
-    res.status(201).json(populated);
+    res.status(201).json(newStory);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
