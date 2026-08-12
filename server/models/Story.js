@@ -40,9 +40,8 @@ const storySchema = new mongoose.Schema({
     default: 'High Confidence' 
   },
   reporter: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+    type: mongoose.Schema.Types.Mixed,
+    required: false 
   },
   reviewerNotes: { type: String, default: '' },
   verificationChecklist: {
