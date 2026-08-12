@@ -15,6 +15,13 @@ const userSchema = new mongoose.Schema({
     enum: ['reporter', 'moderator', 'admin', 'reader'], 
     default: 'reporter' 
   },
+  adminApprovalStatus: { 
+    type: String, 
+    enum: ['none', 'pending', 'approved', 'rejected'], 
+    default: 'none' 
+  },
+  isAdminVerified: { type: Boolean, default: false },
+  adminRequestReason: { type: String, default: '' },
   location: { type: String, default: 'Ground Reporter Location' },
   avatar: { type: String, default: '' },
   bio: { type: String, default: 'Verified Citizen Journalist Profile' },

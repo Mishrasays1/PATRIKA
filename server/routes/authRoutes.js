@@ -109,7 +109,6 @@ router.post('/login', async (req, res) => {
         badges: ['Verified User']
       });
       await user.save();
-      console.log(`[Atlas Auth] Created user on login: ${user.email} (@${user.username})`);
     }
 
     const token = jwt.sign(
@@ -121,6 +120,136 @@ router.post('/login', async (req, res) => {
     res.json({ user, token });
   } catch (err) {
     console.error('Atlas Login error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DEDICATED ADMIN REGISTRATION REQUEST
+router.post('/admin/register', async (req, res) => {
+  try {
+    const { name, email, reason, developerPasskey } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail });
+
+    // Developer Passkey Auto-Approval Check
+    const isAutoApproved = developerPasskey === 'PATRIKA_DEV_2026' || developerPasskey === 'DEV123' || cleanEmail.includes('rahulkrmishra') || cleanEmail.includes('mishrasays1');
+
+    if (!user) {
+      let baseUsername = `admin_${cleanEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_')}`;
+      user = new User({
+        name: name || `Admin ${cleanEmail.split('@')[0]}`,
+        username: baseUsername,
+        email: cleanEmail,
+        role: isAutoApproved ? 'admin' : 'reporter',
+        adminApprovalStatus: isAutoApproved ? 'approved' : 'pending',
+        isAdminVerified: isAutoApproved,
+        adminRequestReason: reason || 'Requested Admin Fact-Checking Verification Access',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`,
+        bio: isAutoApproved ? 'Verified Lead Admin & Fact Checker' : 'Pending Admin Candidate',
+        reputationScore: 100,
+        badges: isAutoApproved ? ['Verified Admin', 'Lead Fact Checker'] : ['Admin Candidate']
+      });
+      await user.save();
+    } else {
+      if (isAutoApproved) {
+        user.role = 'admin';
+        user.adminApprovalStatus = 'approved';
+        user.isAdminVerified = true;
+        if (!user.badges.includes('Verified Admin')) user.badges.push('Verified Admin');
+        await user.save();
+      } else if (!user.isAdminVerified && user.role !== 'admin') {
+        user.adminApprovalStatus = 'pending';
+        user.adminRequestReason = reason || user.adminRequestReason;
+        await user.save();
+      }
+    }
+
+    if (user.isAdminVerified || user.role === 'admin') {
+      const token = jwt.sign(
+        { userId: user._id, email: user.email, role: 'admin' },
+        process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
+        { expiresIn: '7d' }
+      );
+      return res.json({ user, token, message: 'Admin account approved and verified!' });
+    }
+
+    res.json({
+      user,
+      pending: true,
+      message: 'Your Admin Access Request has been submitted and is pending approval by the Lead Developer.'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DEDICATED ADMIN LOGIN
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { email, password, developerPasskey } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail });
+
+    // Developer Passkey Override
+    const isDevPass = developerPasskey === 'PATRIKA_DEV_2026' || developerPasskey === 'DEV123' || cleanEmail.includes('rahulkrmishra') || cleanEmail.includes('mishrasays1');
+
+    if (isDevPass && user) {
+      user.role = 'admin';
+      user.isAdminVerified = true;
+      user.adminApprovalStatus = 'approved';
+      await user.save();
+    }
+
+    if (!user) {
+      return res.status(400).json({ error: 'No Admin account found with this email. Please submit an Admin Access Request.' });
+    }
+
+    if (!user.isAdminVerified && user.role !== 'admin') {
+      if (user.adminApprovalStatus === 'pending') {
+        return res.status(403).json({ error: 'Your Admin Access Request is pending approval by the Lead Developer. You cannot log in as Admin yet.' });
+      }
+      return res.status(403).json({ error: 'Access Denied: Only developer-verified Admins can access the Admin Portal.' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: 'admin' },
+      process.env.JWT_SECRET || 'patrika_jwt_secret_2026',
+      { expiresIn: '7d' }
+    );
+
+    res.json({ user, token, message: 'Welcome to the PATRIKA Admin & Fact-Checking Portal!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Developer Approve Admin Request
+router.post('/admin/approve-user', async (req, res) => {
+  try {
+    const { targetUserId, developerPasskey } = req.body;
+    if (developerPasskey !== 'PATRIKA_DEV_2026' && developerPasskey !== 'DEV123') {
+      return res.status(401).json({ error: 'Invalid Developer Access Passkey' });
+    }
+
+    const user = await User.findById(targetUserId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.role = 'admin';
+    user.adminApprovalStatus = 'approved';
+    user.isAdminVerified = true;
+    if (!user.badges.includes('Verified Admin')) user.badges.push('Verified Admin');
+
+    await user.save();
+    res.json({ message: `Successfully approved @${user.username} as Verified Admin!`, user });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -171,25 +300,16 @@ router.post('/google', async (req, res) => {
       }
 
       user = new User({
-        name: googleUser.name || googleUser.email.split('@')[0],
+        name: googleUser.name || email.split('@')[0],
         username: finalUsername,
         email: email,
-        role: requestedRole || 'reporter',
+        role: 'reporter',
         avatar: googleUser.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
         bio: 'Citizen Journalist & Fact Checker',
         reputationScore: 90,
-        badges: ['Verified User', 'Fact Checker']
+        badges: ['Verified User']
       });
       await user.save();
-      console.log(`[Atlas OAuth] SAVED NEW GOOGLE OAUTH USER TO MONGODB ATLAS: ${user.email} (@${user.username})`);
-    } else {
-      if (!user.username) {
-        let baseUsername = (user.name || user.email.split('@')[0])
-          .toLowerCase()
-          .replace(/[^a-z0-9_]/g, '_');
-        user.username = baseUsername;
-        await user.save();
-      }
     }
 
     const token = jwt.sign(
@@ -204,7 +324,6 @@ router.post('/google', async (req, res) => {
       provider: 'google'
     });
   } catch (err) {
-    console.error('Atlas Google OAuth error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -212,8 +331,17 @@ router.post('/google', async (req, res) => {
 // PUT Update User Profile
 router.put('/profile/:id', async (req, res) => {
   try {
-    const { name, username, role, bio } = req.body;
+    const { name, username, role, bio, location } = req.body;
     const userId = req.params.id;
+
+    // Prevent regular non-admin users from self-promoting to admin
+    let safeRole = role;
+    if (role === 'admin') {
+      const currentUserDoc = await User.findById(userId);
+      if (!currentUserDoc?.isAdminVerified) {
+        safeRole = currentUserDoc?.role || 'reporter';
+      }
+    }
 
     if (username) {
       const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
@@ -234,8 +362,9 @@ router.put('/profile/:id', async (req, res) => {
       { 
         ...(name && { name }),
         ...(req.body.username && { username: req.body.username }),
-        ...(role && { role }),
-        ...(bio && { bio })
+        ...(safeRole && { role: safeRole }),
+        ...(bio && { bio }),
+        ...(location && { location })
       },
       { new: true, runValidators: true }
     );

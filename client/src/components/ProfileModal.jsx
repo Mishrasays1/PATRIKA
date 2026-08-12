@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Shield, CheckCircle2, Award, X, AtSign, Save, AlertTriangle, MapPin, UserCheck } from 'lucide-react';
+import { User, Shield, CheckCircle2, Award, X, AtSign, Save, AlertTriangle, MapPin, UserCheck, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 
@@ -17,6 +17,8 @@ export const ProfileModal = ({ isOpen, onClose }) => {
   const [role, setRole] = useState(currentUser?.role || 'reporter');
   const [existingUsers, setExistingUsers] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.isAdminVerified;
 
   // Sync state when currentUser or isOpen changes
   useEffect(() => {
@@ -70,7 +72,7 @@ export const ProfileModal = ({ isOpen, onClose }) => {
         username: cleanHandle,
         bio: bio || currentUser.bio,
         location: location || 'Ground Reporter Location',
-        role: role || 'reporter'
+        role: isAdmin ? 'admin' : (role === 'admin' ? 'reporter' : role)
       };
 
       // 1. Save permanently in persistent storage for this email
@@ -94,7 +96,7 @@ export const ProfileModal = ({ isOpen, onClose }) => {
           username: cleanHandle,
           bio,
           location,
-          role
+          role: isAdmin ? 'admin' : (role === 'admin' ? 'reporter' : role)
         }).then(res => {
           if (res && res._id) setCurrentUser(res);
         }).catch(err => {
@@ -126,9 +128,16 @@ export const ProfileModal = ({ isOpen, onClose }) => {
               <h2 className="text-lg font-bold text-white font-serif">{currentUser.name || 'Citizen Reporter'}</h2>
               <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
                 <span>@{currentUser.username || 'username'}</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-semibold uppercase">
-                  {role}
-                </span>
+                {isAdmin ? (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-800 text-amber-400 text-[10px] font-bold flex items-center gap-1 uppercase">
+                    <Lock className="w-3 h-3 text-amber-400" />
+                    <span>VERIFIED ADMIN</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-semibold uppercase">
+                    {role}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -183,16 +192,25 @@ export const ProfileModal = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">User Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-emerald-500 capitalize"
-              >
-                <option value="reporter">Reporter (Citizen Journalist)</option>
-                <option value="reader">Reader (Community Member)</option>
-                <option value="admin">Admin (Fact Check Lead)</option>
-              </select>
+              <label className="block text-slate-300 font-semibold mb-1 flex items-center justify-between">
+                <span>User Role</span>
+                {!isAdmin && <span className="text-[10px] text-slate-500 font-mono">Admin requires approval</span>}
+              </label>
+              {isAdmin ? (
+                <div className="w-full bg-amber-950/40 border border-amber-800/80 rounded-xl px-3 py-2.5 text-amber-300 font-bold text-xs flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Developer Verified Admin</span>
+                </div>
+              ) : (
+                <select
+                  value={role === 'admin' ? 'reporter' : role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-emerald-500 capitalize"
+                >
+                  <option value="reporter">Reporter (Citizen Journalist)</option>
+                  <option value="reader">Reader (Community Member)</option>
+                </select>
+              )}
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
+import { AdminLogin } from './AdminLogin';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '761963955701-2mclmabgns1ia9mido9hji1oo1i394es.apps.googleusercontent.com';
 
@@ -27,6 +28,7 @@ export const OAuthLanding = () => {
 
   // Mode: 'login' | 'register'
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [showAdminPortal, setShowAdminPortal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -186,6 +188,10 @@ export const OAuthLanding = () => {
       setSubmitting(false);
     }
   };
+
+  if (showAdminPortal) {
+    return <AdminLogin onBackToUserAuth={() => setShowAdminPortal(false)} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 font-sans">
@@ -383,6 +389,18 @@ export const OAuthLanding = () => {
                   ) : (
                     <span>Don't have an account? <button type="button" onClick={() => setIsRegisterMode(true)} className="text-emerald-400 font-bold hover:underline">Register Account</button></span>
                   )}
+                </div>
+
+                {/* DEDICATED ADMIN PORTAL ACCESS BUTTON */}
+                <div className="pt-4 text-center border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPortal(true)}
+                    className="px-4 py-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800 text-amber-300 font-semibold text-xs transition inline-flex items-center gap-2 shadow"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>🔒 Admin & Fact-Check Portal Login</span>
+                  </button>
                 </div>
 
               </form>

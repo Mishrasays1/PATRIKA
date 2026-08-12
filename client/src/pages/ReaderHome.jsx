@@ -16,7 +16,8 @@ import {
   Trash2,
   MapPin,
   TrendingUp,
-  Award
+  Award,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -165,17 +166,23 @@ export const ReaderHome = () => {
     setExistingReportForUser(myReport || null);
   };
 
-  // Delete User's Published Story
+  // Delete Published Story (Author or Admin Power)
   const handleDeleteStory = async (e, storyId) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete your published story? This cannot be undone.')) return;
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.isAdminVerified);
+    const confirmMsg = isAdmin 
+      ? 'ADMIN POWER: Are you sure you want to delete this post from the platform?' 
+      : 'Are you sure you want to delete your published story? This cannot be undone.';
+
+    if (!window.confirm(confirmMsg)) return;
 
     setStories(prev => prev.filter(s => s._id !== storyId));
-    showToast('Story deleted successfully.', 'info');
+    showToast('Story deleted successfully from platform.', 'info');
 
     try {
       await api.deleteStory(storyId);
       await refreshData();
+      await fetchKpis();
     } catch (err) {
       console.log('Story delete background:', err);
     }
@@ -296,6 +303,8 @@ export const ReaderHome = () => {
             const userVote = story.votes?.find(v => String(v.userId) === String(currentUser?._id))?.voteType;
             const hasUserFlagged = storyReports.some(r => String(r.reporterId) === String(currentUser?._id));
             const isAuthor = currentUser && (String(story.reporter?._id || story.reporter) === String(currentUser._id));
+            const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.isAdminVerified);
+            const canDelete = isAuthor || isAdmin;
 
             return (
               <article
@@ -337,15 +346,19 @@ export const ReaderHome = () => {
                         </span>
                       </div>
 
-                      {/* DELETE PUBLISHED STORY BUTTON FOR AUTHOR */}
-                      {isAuthor && (
+                      {/* DELETE POST BUTTON FOR AUTHOR OR ADMIN POWER */}
+                      {canDelete && (
                         <button
                           onClick={(e) => handleDeleteStory(e, story._id)}
-                          className="px-2.5 py-1 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[11px] font-semibold flex items-center gap-1 transition"
-                          title="Delete your published story"
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold flex items-center gap-1 transition ${
+                            isAdmin && !isAuthor
+                              ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950 font-bold border border-rose-400'
+                              : 'bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300'
+                          }`}
+                          title={isAdmin && !isAuthor ? "Admin Power: Delete any post" : "Delete your published story"}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete Story</span>
+                          <span>{isAdmin && !isAuthor ? 'Delete Post (Admin)' : 'Delete Story'}</span>
                         </button>
                       )}
                     </div>

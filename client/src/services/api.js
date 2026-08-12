@@ -144,6 +144,39 @@ export const api = {
     return data;
   },
 
+  async registerAdmin(adminData) {
+    const res = await fetch(`${API_BASE}/auth/admin/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adminData),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Admin registration failed');
+    return data;
+  },
+
+  async loginAdmin(credentials) {
+    const res = await fetch(`${API_BASE}/auth/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Admin login failed');
+    return data;
+  },
+
+  async approveAdminCandidate(targetUserId, developerPasskey) {
+    const res = await fetch(`${API_BASE}/auth/admin/approve-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId, developerPasskey }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Approval failed');
+    return data;
+  },
+
   async loginWithGoogle(googlePayload) {
     const res = await fetch(`${API_BASE}/auth/google`, {
       method: 'POST',
